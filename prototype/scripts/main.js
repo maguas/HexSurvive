@@ -9,27 +9,29 @@ const combat = new CombatSystem(game);
 
 let selectedHex = null;
 let exploreMode = false;
+let patrolMode = false;
 
 function init() {
     game.initGame();
     updateUI();
     grid.render(game.map);
-    
+
     // Event Listeners
     document.getElementById('btn-roll-dice').addEventListener('click', handleRollDice);
     document.getElementById('btn-explore').addEventListener('click', toggleExploreMode);
     document.getElementById('btn-build-outpost').addEventListener('click', handleBuildOutpost);
+    document.getElementById('btn-upgrade-fortress').addEventListener('click', handleUpgradeFortress);
     document.getElementById('btn-train').addEventListener('click', handleTrainHero);
     document.getElementById('btn-end-turn').addEventListener('click', handleEndTurn);
-    
+
     // Canvas interaction
     const canvas = document.getElementById('hex-grid-canvas');
     canvas.addEventListener('click', handleCanvasClick);
-    
+
     // Combat modal buttons
     document.getElementById('btn-fight').addEventListener('click', handleFight);
     document.getElementById('btn-retreat').addEventListener('click', handleRetreat);
-    
+
     log("🎮 Game Started! Roll dice to begin production phase.");
 }
 
@@ -74,7 +76,7 @@ function updateUI() {
 function handleRollDice() {
     game.phase = 'action';
     const roll = game.rollDice();
-    
+
     // Show dice animation
     showDiceRoll(roll);
 
@@ -83,7 +85,7 @@ function handleRollDice() {
             // Invasion event
             const invasion = game.handleInvasion();
             log(`🚨 INVASION! Threat Level increased to ${invasion.threatLevel}`, 'danger');
-            
+
             let discardMsg = "Discarded: ";
             let hasDiscard = false;
             for (const [res, amount] of Object.entries(invasion.discarded)) {
@@ -93,6 +95,12 @@ function handleRollDice() {
                 }
             }
             if (hasDiscard) log(discardMsg.slice(0, -2), 'warning');
+
+            if (invasion.needsPatrolMove) {
+                patrolMode = true;
+                log("👽 Select a REVEALED tile to move the Alien Patrol!", 'danger');
+                document.getElementById('game-container').style.cursor = 'crosshair';
+            }
         } else {
             // Production
             const gains = game.harvest(roll.total);
@@ -118,14 +126,14 @@ function showDiceRoll(roll) {
     const die1 = document.getElementById('die1');
     const die2 = document.getElementById('die2');
     const rollTotal = document.getElementById('roll-total');
-    
+
     const symbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
     die1.textContent = symbols[roll.d1 - 1];
     die2.textContent = symbols[roll.d2 - 1];
     rollTotal.textContent = `Roll: ${roll.total}`;
-    
+
     diceDisplay.classList.remove('hidden');
-    
+
     setTimeout(() => {
         diceDisplay.classList.add('hidden');
     }, 2000);
@@ -134,7 +142,7 @@ function showDiceRoll(roll) {
 function toggleExploreMode() {
     exploreMode = !exploreMode;
     const btn = document.getElementById('btn-explore');
-    
+
     if (exploreMode) {
         btn.style.background = 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)';
         btn.style.color = 'white';
@@ -158,13 +166,26 @@ function handleCanvasClick(event) {
 
     if (!tile) return;
 
+    if (patrolMode) {
+        const result = game.moveAlienPatrol(hex.q, hex.r);
+        if (result.success) {
+            log("👽 Alien Patrol moved!", 'success');
+            patrolMode = false;
+            document.getElementById('game-container').style.cursor = 'default';
+            grid.render(game.map);
+        } else {
+            log(`❌ ${result.reason}`, 'warning');
+        }
+        return;
+    }
+
     if (exploreMode && !tile.revealed) {
         // Explore this tile
         const result = game.explore(hex.q, hex.r);
-        
+
         if (result.success) {
             log(`🔍 Explored Lvl ${result.tile.level} ${result.tile.type}! Token: ${result.tile.numberToken}`, 'success');
-            
+
             if (result.encounter.type === 'combat') {
                 log(`⚔️ ENCOUNTER: ${result.encounter.enemyType} Alien (Lvl ${result.encounter.level})!`, 'danger');
                 showCombatModal(result.encounter);
@@ -176,7 +197,7 @@ function handleCanvasClick(event) {
             } else {
                 log(`✅ ${result.encounter.message}`);
             }
-            
+
             exploreMode = false;
             document.getElementById('btn-explore').style.background = '';
             grid.render(game.map);
@@ -199,7 +220,7 @@ function handleBuildOutpost() {
     }
 
     const result = game.buildOutpost(selectedHex.q, selectedHex.r);
-    
+
     if (result.success) {
         log(`🏠 Outpost built! +1 VP (Total: ${game.victoryPoints})`, 'success');
         grid.render(game.map);
@@ -209,9 +230,26 @@ function handleBuildOutpost() {
     }
 }
 
+function handleUpgradeFortress() {
+    if (!selectedHex) {
+        log("❌ Select an Outpost first", 'warning');
+        return;
+    }
+
+    const result = game.upgradeToFortress(selectedHex.q, selectedHex.r);
+
+    if (result.success) {
+        log(`🏰 Upgraded to Fortress! +1 VP (Total: ${game.victoryPoints})`, 'success');
+        grid.render(game.map);
+        updateUI();
+    } else {
+        log(`❌ ${result.reason}`, 'warning');
+    }
+}
+
 function handleTrainHero() {
     const result = game.trainHero();
-    
+
     if (result.success) {
         if (result.levelUp) {
             log(`🎓 Hero leveled up to Level ${game.playerHero.level}!`, 'success');
@@ -234,13 +272,13 @@ function showCombatModal(encounter) {
     const modal = document.getElementById('combat-modal');
     const combatInfo = document.getElementById('combat-info');
     const combatDiceArea = document.getElementById('combat-dice-area');
-    
+
     // Initialize combat
     const combatData = combat.initiateCombat(encounter);
-    
+
     // Show enemy info
     combatInfo.innerHTML = combat.getEnemyHTML(encounter);
-    
+
     // Show player dice
     combatDiceArea.innerHTML = `
         <h4>Your Dice:</h4>
@@ -251,13 +289,13 @@ function showCombatModal(encounter) {
             <small>Total: ${combatData.playerDice.reduce((sum, d) => sum + d.value, 0)}</small>
         </div>
     `;
-    
+
     modal.classList.remove('hidden');
 }
 
 function handleFight() {
     const result = combat.resolveCombat();
-    
+
     if (result.victory) {
         log(`⚔️ Victory! Defeated enemy. +${result.xpGained} XP`, 'success');
         if (result.loot) {
@@ -268,7 +306,7 @@ function handleFight() {
     } else {
         log(`⚠️ ${result.message} (Took ${result.damageTaken} damage)`, 'warning');
     }
-    
+
     closeCombatModal();
     updateUI();
 }
@@ -296,7 +334,7 @@ function log(msg, type = '') {
     entry.className = `log-entry ${type}`;
     entry.textContent = `> ${msg}`;
     logEl.prepend(entry);
-    
+
     // Keep only last 50 entries
     while (logEl.children.length > 50) {
         logEl.removeChild(logEl.lastChild);

@@ -7,7 +7,7 @@ export class GameManager {
             alloy: 0,
             intel: 1
         };
-        
+
         this.playerHero = {
             name: "Commander",
             level: 1,
@@ -23,7 +23,7 @@ export class GameManager {
             health: 10,
             maxHealth: 10
         };
-        
+
         this.map = new Map();
         this.turn = 1;
         this.phase = 'production';
@@ -45,7 +45,31 @@ export class GameManager {
         });
 
         // Add initial neighbors (fog of war)
+        // Add initial neighbors (fog of war)
         this.addNeighbors(0, 0);
+        this.alienPatrolLocation = null;
+    }
+
+    moveAlienPatrol(q, r) {
+        const key = `${q},${r}`;
+        const tile = this.map.get(key);
+
+        if (!tile || !tile.revealed) {
+            return { success: false, reason: "Can only move patrol to revealed tiles" };
+        }
+
+        // Remove from old location
+        if (this.alienPatrolLocation) {
+            const oldKey = this.alienPatrolLocation;
+            const oldTile = this.map.get(oldKey);
+            if (oldTile) oldTile.alienPatrol = false;
+        }
+
+        // Set new location
+        tile.alienPatrol = true;
+        this.alienPatrolLocation = key;
+
+        return { success: true };
     }
 
     randomTileType() {
@@ -53,7 +77,7 @@ export class GameManager {
         const weights = [25, 20, 20, 15, 15, 5]; // Percentage weights
         const totalWeight = weights.reduce((a, b) => a + b, 0);
         let random = Math.random() * totalWeight;
-        
+
         for (let i = 0; i < types.length; i++) {
             if (random < weights[i]) return types[i];
             random -= weights[i];
@@ -69,7 +93,7 @@ export class GameManager {
 
     harvest(rollValue) {
         let gains = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
-        
+
         if (rollValue === 7) {
             return null; // Invasion event
         }
@@ -77,7 +101,7 @@ export class GameManager {
         this.map.forEach((tile) => {
             if (tile.revealed && tile.numberToken === rollValue && tile.outpost && !tile.alienPatrol) {
                 const amount = tile.fortress ? 2 : 1;
-                
+
                 switch (tile.type) {
                     case 'ruins':
                         gains.scrap += amount;
@@ -102,18 +126,18 @@ export class GameManager {
                 }
             }
         });
-        
+
         return gains;
     }
 
     explore(q, r) {
         const key = `${q},${r}`;
         const tile = this.map.get(key);
-        
+
         if (!tile || tile.revealed) {
             return { success: false, reason: "Tile already explored or doesn't exist" };
         }
-        
+
         if (this.resources.fuel < 1 || this.resources.food < 1) {
             return { success: false, reason: "Not enough resources (need 1 Fuel + 1 Food)" };
         }
@@ -130,7 +154,7 @@ export class GameManager {
         // Reveal tile
         tile.revealed = true;
         tile.numberToken = this.generateNumberToken();
-        
+
         // Calculate level based on distance from HQ
         const dist = (Math.abs(q) + Math.abs(q + r) + Math.abs(r)) / 2;
         tile.level = Math.floor(dist);
@@ -169,7 +193,7 @@ export class GameManager {
 
     generateEncounter(level) {
         const roll = Math.random();
-        
+
         // Higher levels = more dangerous
         if (roll < 0.3 + level * 0.05) {
             return this.generateCombatEncounter(level);
@@ -184,14 +208,29 @@ export class GameManager {
         const types = ['Scout', 'Soldier', 'Elite', 'Commander'];
         const typeIndex = Math.min(level, types.length - 1);
         const alienType = types[typeIndex];
-        
+
+        const slots = [];
+        // Base slot: Needs total damage
+        slots.push({ type: 'any', value: 3 + level, label: 'Health' });
+
+        // Armor slot (requires Strength)
+        if (level > 0) {
+            slots.push({ type: 'str', value: 2 + level, label: 'Armor' });
+        }
+
+        // Evasion slot (requires Tactics)
+        if (level > 2) {
+            slots.push({ type: 'tac', value: 3 + level, label: 'Evasion' });
+        }
+
         return {
             type: 'combat',
             enemyType: alienType,
             level: level,
-            health: 3 + level * 2,
+            health: 3 + level * 2, // Keep for legacy display or remove
             armor: level,
             damage: 2 + level,
+            slots: slots,
             reward: {
                 xp: 5 + level * 2,
                 loot: level > 1 ? this.generateLoot(level) : null
@@ -216,7 +255,7 @@ export class GameManager {
             weapon: ['Plasma Rifle', 'Laser Gun', 'Rail Gun'],
             tech: ['Scanner', 'Med Kit', 'EMP Device']
         };
-        
+
         return {
             slot: slot,
             name: names[slot][Math.floor(Math.random() * names[slot].length)],
@@ -227,15 +266,15 @@ export class GameManager {
     buildOutpost(q, r) {
         const key = `${q},${r}`;
         const tile = this.map.get(key);
-        
+
         if (!tile || !tile.revealed) {
             return { success: false, reason: "Cannot build on unrevealed tile" };
         }
-        
+
         if (tile.outpost) {
             return { success: false, reason: "Outpost already exists here" };
         }
-        
+
         if (this.resources.scrap < 1 || this.resources.food < 1 || this.resources.fuel < 1) {
             return { success: false, reason: "Not enough resources (need 1 Scrap, 1 Food, 1 Fuel)" };
         }
@@ -247,6 +286,33 @@ export class GameManager {
 
         tile.outpost = true;
         this.victoryPoints++;
+
+        return { success: true };
+    }
+
+    upgradeToFortress(q, r) {
+        const key = `${q},${r}`;
+        const tile = this.map.get(key);
+
+        if (!tile || !tile.outpost) {
+            return { success: false, reason: "Must have an Outpost to upgrade" };
+        }
+
+        if (tile.fortress) {
+            return { success: false, reason: "Already a Fortress" };
+        }
+
+        // Cost: 2 Scrap, 3 Alloy
+        if (this.resources.scrap < 2 || this.resources.alloy < 3) {
+            return { success: false, reason: "Not enough resources (need 2 Scrap, 3 Alloy)" };
+        }
+
+        // Pay costs
+        this.resources.scrap -= 2;
+        this.resources.alloy -= 3;
+
+        tile.fortress = true;
+        this.victoryPoints++; // +1 VP (Total 2 for Fortress vs 1 for Outpost)
 
         return { success: true };
     }
@@ -274,23 +340,23 @@ export class GameManager {
         this.playerHero.level++;
         this.playerHero.xp = 0;
         this.playerHero.xpToNext = Math.floor(this.playerHero.xpToNext * 1.5);
-        
+
         // Increase random stat
         const stats = ['tac', 'str', 'tech'];
         const statToIncrease = stats[Math.floor(Math.random() * stats.length)];
         this.playerHero.stats[statToIncrease]++;
-        
+
         this.playerHero.maxHealth += 2;
         this.playerHero.health = this.playerHero.maxHealth;
     }
 
     handleInvasion() {
         this.threatLevel++;
-        
+
         // Discard half resources if > 7
         let discarded = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
         const totalResources = Object.values(this.resources).reduce((a, b) => a + b, 0);
-        
+
         if (totalResources > 7) {
             for (let key in this.resources) {
                 const half = Math.floor(this.resources[key] / 2);
@@ -299,7 +365,7 @@ export class GameManager {
             }
         }
 
-        return { discarded, threatLevel: this.threatLevel };
+        return { discarded, threatLevel: this.threatLevel, needsPatrolMove: true };
     }
 
     addNeighbors(q, r) {
@@ -307,12 +373,12 @@ export class GameManager {
             [1, 0], [1, -1], [0, -1],
             [-1, 0], [-1, 1], [0, 1]
         ];
-        
+
         directions.forEach(dir => {
             const nQ = q + dir[0];
             const nR = r + dir[1];
             const key = `${nQ},${nR}`;
-            
+
             if (!this.map.has(key)) {
                 this.map.set(key, {
                     type: this.randomTileType(),
