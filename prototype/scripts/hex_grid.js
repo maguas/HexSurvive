@@ -21,10 +21,10 @@ export class HexGrid {
     pixelToHex(mouseX, mouseY) {
         const x = mouseX - this.offsetX;
         const y = mouseY - this.offsetY;
-        
+
         const q = (this.sqrt3 / 3 * x - 1 / 3 * y) / this.hexSize;
         const r = (2 / 3 * y) / this.hexSize;
-        
+
         return this.cubeRound({ q, r, s: -q - r });
     }
 
@@ -69,7 +69,7 @@ export class HexGrid {
             ctx.strokeStyle = "#333";
             ctx.lineWidth = 2;
             ctx.stroke();
-            
+
             // Fog pattern
             ctx.fillStyle = "rgba(50, 50, 50, 0.5)";
             ctx.fill();
@@ -122,7 +122,7 @@ export class HexGrid {
             ctx.beginPath();
             ctx.arc(x, y, 16, 0, 2 * Math.PI);
             ctx.fill();
-            
+
             ctx.fillStyle = "#000";
             ctx.font = "bold 16px Arial";
             ctx.textAlign = "center";
@@ -156,14 +156,97 @@ export class HexGrid {
         }
     }
 
-    render(mapData, selectedHex = null) {
+    getEdgeMidpoint(q, r, edgeIndex) {
+        const { x, y } = this.hexToPixel(q, r);
+        const angle1 = (60 * edgeIndex - 30) * (Math.PI / 180);
+        const angle2 = (60 * ((edgeIndex + 1) % 6) - 30) * (Math.PI / 180);
+
+        const x1 = x + this.hexSize * Math.cos(angle1);
+        const y1 = y + this.hexSize * Math.sin(angle1);
+        const x2 = x + this.hexSize * Math.cos(angle2);
+        const y2 = y + this.hexSize * Math.sin(angle2);
+
+        return { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
+    }
+
+    getClosestEdge(mouseX, mouseY) {
+        const hex = this.pixelToHex(mouseX, mouseY);
+        const { x: centerX, y: centerY } = this.hexToPixel(hex.q, hex.r);
+
+        let minDist = Infinity;
+        let closestEdge = 0;
+
+        for (let i = 0; i < 6; i++) {
+            const mid = this.getEdgeMidpoint(hex.q, hex.r, i);
+            const dist = Math.sqrt(Math.pow(mouseX - mid.x, 2) + Math.pow(mouseY - mid.y, 2));
+            if (dist < minDist) {
+                minDist = dist;
+                closestEdge = i;
+            }
+        }
+
+        return { q: hex.q, r: hex.r, edgeIndex: closestEdge };
+    }
+
+    drawHero(q, r, edgeIndex) {
+        const pos = this.getEdgeMidpoint(q, r, edgeIndex);
+        const ctx = this.ctx;
+
+        ctx.fillStyle = "#00ffff";
+        ctx.shadowColor = "#00ffff";
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw "Hero" text or icon
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 10px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("H", pos.x, pos.y);
+    }
+
+    drawEdgeHighlight(q, r, edgeIndex, color = "rgba(255, 255, 255, 0.5)") {
+        const { x, y } = this.hexToPixel(q, r);
+        const ctx = this.ctx;
+
+        const angle1 = (60 * edgeIndex - 30) * (Math.PI / 180);
+        const angle2 = (60 * ((edgeIndex + 1) % 6) - 30) * (Math.PI / 180);
+
+        const x1 = x + this.hexSize * Math.cos(angle1);
+        const y1 = y + this.hexSize * Math.sin(angle1);
+        const x2 = x + this.hexSize * Math.cos(angle2);
+        const y2 = y + this.hexSize * Math.sin(angle2);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 5;
+        ctx.stroke();
+    }
+
+    render(mapData, selectedHex = null, heroLocation = null, hoveredEdge = null) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
+
         mapData.forEach((tile, key) => {
             const [q, r] = key.split(',').map(Number);
             const isSelected = selectedHex && selectedHex.q === q && selectedHex.r === r;
             this.drawHex(q, r, tile, isSelected);
         });
+
+        if (hoveredEdge) {
+            this.drawEdgeHighlight(hoveredEdge.q, hoveredEdge.r, hoveredEdge.edgeIndex);
+        }
+
+        if (heroLocation) {
+            this.drawHero(heroLocation.q, heroLocation.r, heroLocation.edgeIndex);
+        }
     }
 
     getResourceIcon(type) {

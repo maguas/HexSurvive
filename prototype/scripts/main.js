@@ -27,12 +27,13 @@ function init() {
     // Canvas interaction
     const canvas = document.getElementById('hex-grid-canvas');
     canvas.addEventListener('click', handleCanvasClick);
+    canvas.addEventListener('mousemove', handleCanvasMouseMove);
 
     // Combat modal buttons
     document.getElementById('btn-fight').addEventListener('click', handleFight);
     document.getElementById('btn-retreat').addEventListener('click', handleRetreat);
 
-    log("🎮 Game Started! Roll dice to begin production phase.");
+    log("🎮 Game Started! Place your Initial Outpost & Hero (Click an Edge).");
 }
 
 function updateUI() {
@@ -54,17 +55,16 @@ function updateUI() {
     document.getElementById('threat-value').textContent = game.threatLevel;
 
     // Hero
-    const hero = game.playerHero;
+    const hero = game.hero;
     document.getElementById('hero-level').textContent = hero.level;
     document.getElementById('hero-xp').textContent = hero.xp;
-    document.getElementById('hero-xp-next').textContent = hero.xpToNext;
-    document.getElementById('stat-tac').textContent = hero.stats.tac;
-    document.getElementById('stat-str').textContent = hero.stats.str;
+    // document.getElementById('hero-xp-next').textContent = hero.xpToNext; // Removed in new rules
+    document.getElementById('stat-tac').textContent = hero.stats.tactics;
+    document.getElementById('stat-str').textContent = hero.stats.strength;
     document.getElementById('stat-tech').textContent = hero.stats.tech;
-    document.getElementById('gear-head').textContent = hero.gear.head || '-';
-    document.getElementById('gear-body').textContent = hero.gear.body || '-';
-    document.getElementById('gear-weapon').textContent = hero.gear.weapon || '-';
-    document.getElementById('gear-tech').textContent = hero.gear.tech || '-';
+
+    // Gear display update needed based on new rules (Cards tucked)
+    // For now, just show stats
 
     // Check win condition
     if (game.victoryPoints >= 10) {
@@ -73,86 +73,18 @@ function updateUI() {
     }
 }
 
-function handleRollDice() {
-    game.phase = 'action';
-    const roll = game.rollDice();
+// ... handleRollDice ...
 
-    // Show dice animation
-    showDiceRoll(roll);
+function handleCanvasMouseMove(event) {
+    const rect = event.target.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
 
-    setTimeout(() => {
-        if (roll.total === 7) {
-            // Invasion event
-            const invasion = game.handleInvasion();
-            log(`🚨 INVASION! Threat Level increased to ${invasion.threatLevel}`, 'danger');
+    const edgeData = grid.getClosestEdge(mouseX, mouseY);
 
-            let discardMsg = "Discarded: ";
-            let hasDiscard = false;
-            for (const [res, amount] of Object.entries(invasion.discarded)) {
-                if (amount > 0) {
-                    discardMsg += `${amount} ${res}, `;
-                    hasDiscard = true;
-                }
-            }
-            if (hasDiscard) log(discardMsg.slice(0, -2), 'warning');
-
-            if (invasion.needsPatrolMove) {
-                patrolMode = true;
-                log("👽 Select a REVEALED tile to move the Alien Patrol!", 'danger');
-                document.getElementById('game-container').style.cursor = 'crosshair';
-            }
-        } else {
-            // Production
-            const gains = game.harvest(roll.total);
-            if (gains) {
-                let msg = "📦 Harvested: ";
-                let hasGains = false;
-                for (const [res, amount] of Object.entries(gains)) {
-                    if (amount > 0) {
-                        msg += `${amount} ${res}, `;
-                        hasGains = true;
-                    }
-                }
-                if (hasGains) log(msg.slice(0, -2), 'success');
-                else log(`No production on ${roll.total}`);
-            }
-        }
-        updateUI();
-    }, 2000);
-}
-
-function showDiceRoll(roll) {
-    const diceDisplay = document.getElementById('dice-result');
-    const die1 = document.getElementById('die1');
-    const die2 = document.getElementById('die2');
-    const rollTotal = document.getElementById('roll-total');
-
-    const symbols = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
-    die1.textContent = symbols[roll.d1 - 1];
-    die2.textContent = symbols[roll.d2 - 1];
-    rollTotal.textContent = `Roll: ${roll.total}`;
-
-    diceDisplay.classList.remove('hidden');
-
-    setTimeout(() => {
-        diceDisplay.classList.add('hidden');
-    }, 2000);
-}
-
-function toggleExploreMode() {
-    exploreMode = !exploreMode;
-    const btn = document.getElementById('btn-explore');
-
-    if (exploreMode) {
-        btn.style.background = 'linear-gradient(135deg, #4caf50 0%, #388e3c 100%)';
-        btn.style.color = 'white';
-        log("🔍 Explore mode activated. Click on fog tiles to explore.", 'warning');
-    } else {
-        btn.style.background = '';
-        btn.style.color = '';
-        selectedHex = null;
-        grid.render(game.map);
-    }
+    // Only highlight if close to the edge (optional threshold)
+    // For now, just highlight closest edge
+    grid.render(game.map, selectedHex, game.hero.location, edgeData);
 }
 
 function handleCanvasClick(event) {
@@ -160,11 +92,139 @@ function handleCanvasClick(event) {
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
+    // Check if clicking on an edge for movement or setup
+    const edgeData = grid.getClosestEdge(mouseX, mouseY);
+    const mid = grid.getEdgeMidpoint(edgeData.q, edgeData.r, edgeData.edgeIndex);
+    const dist = Math.sqrt(Math.pow(mouseX - mid.x, 2) + Math.pow(mouseY - mid.y, 2));
+
+    // Threshold for edge click vs tile click (e.g., 15px from edge center)
+    if (dist < 20) {
+        if (game.phase === 'setup') {
+            const result = game.handleInitialPlacement(edgeData.q, edgeData.r, edgeData.edgeIndex);
+            if (result.success) {
+                log("🏠 Initial Outpost & Hero placed!", 'success');
+                log("🎲 Roll dice to start your turn.", 'info');
+                updateUI();
+                grid.render(game.map, null, game.hero.location);
+            } else {
+                log(`❌ ${result.reason}`, 'warning');
+            }
+            return;
+        }
+
+        // Attempt move
+        const result = game.moveHero(edgeData.q, edgeData.r, edgeData.edgeIndex);
+        if (result.success) {
+            log("🏃 Hero moved!", 'success');
+            updateUI();
+            grid.render(game.map, selectedHex, game.hero.location);
+
+            // Handle Encounters
+            if (result.encounters && result.encounters.length > 0) {
+                // For prototype, just handle the first one
+                const encounter = result.encounters[0];
+                log(`⚠️ Encounter at ${encounter.tile.type}: ${encounter.card.title}`, 'warning');
+                showEncounterModal(encounter.card);
+            }
+        } else {
+            log(`❌ ${result.reason}`, 'warning');
+        }
+        return;
+    }
+
+    // ...
+
+    function showEncounterModal(card) {
+        // Reuse combat modal structure or create new one
+        // For now, let's assume it's a combat/hazard that uses the combat system
+        // Or a stash that gives loot immediately
+
+        if (card.type === 'stash') {
+            log(`🎁 Found Stash: ${card.title}`, 'success');
+            applyReward(card.reward);
+            return;
+        }
+
+        // Combat or Hazard
+        const modal = document.getElementById('combat-modal');
+        const combatInfo = document.getElementById('combat-info');
+        const combatDiceArea = document.getElementById('combat-dice-area');
+
+        // Mock combat data for display
+        combatInfo.innerHTML = `
+        <div class="enemy-card">
+            <h3>${card.title} (Lvl ${card.level})</h3>
+            <p>${card.description}</p>
+            <div class="enemy-stats">
+                <div>🛡️ Defense: ${card.enemy.defense}</div>
+                <div>🎲 Slots: ${card.enemy.slots.map(s => `${s.value} ${s.type}`).join(', ')}</div>
+            </div>
+            <div class="enemy-reward">
+                Reward: ${card.reward.type === 'xp' ? 'XP Cube' : card.reward.item.name}
+            </div>
+        </div>
+    `;
+
+        // Setup buttons for resolution (Mocking the combat flow for now)
+        combatDiceArea.innerHTML = `
+        <button id="btn-resolve-encounter" class="btn btn-primary">Roll Dice & Resolve</button>
+    `;
+
+        document.getElementById('btn-resolve-encounter').onclick = () => resolveEncounter(card);
+
+        modal.classList.remove('hidden');
+    }
+
+    function resolveEncounter(card) {
+        // Simple resolution for prototype
+        // In real game, use CombatSystem
+        const hero = game.hero;
+        const roll = Math.floor(Math.random() * 6) + 1 + hero.stats.strength; // Mock roll
+
+        log(`🎲 Rolled ${roll} vs Defense ${card.enemy.defense}`);
+
+        if (roll >= card.enemy.defense) {
+            log(`✅ Victory!`, 'success');
+            applyReward(card.reward);
+        } else {
+            log(`❌ Defeat!`, 'danger');
+            const threatResult = game.handleEncounterFailure();
+            if (threatResult.gameOver) {
+                alert("GAME OVER! The Alien Threat has overwhelmed you.");
+                location.reload();
+            }
+            log(`Threat increased to Level ${threatResult.level} (Track: ${threatResult.track}/5)`, 'danger');
+        }
+
+        closeCombatModal();
+        updateUI();
+    }
+
+    function applyReward(reward) {
+        if (reward.type === 'xp') {
+            const result = game.gainXp(reward.value);
+            log(`✨ Gained ${reward.value} XP Cube! (Total: ${game.hero.xp})`, 'success');
+            if (result.levelUp) {
+                log(`🆙 Level Up! +1 Combat Die`, 'success');
+            }
+        } else if (reward.type === 'loot') {
+            game.addLoot(reward.item);
+            log(`🎒 Looted: ${reward.item.name}`, 'success');
+        }
+        updateUI();
+    }
+
+    // Otherwise, tile click
     const hex = grid.pixelToHex(mouseX, mouseY);
     const key = `${hex.q},${hex.r}`;
     const tile = game.map.get(key);
 
     if (!tile) return;
+
+    if (game.phase === 'setup') {
+        log("⚠️ Click on an EDGE to place your Outpost and Hero.", 'warning');
+        return;
+    }
 
     if (patrolMode) {
         const result = game.moveAlienPatrol(hex.q, hex.r);
@@ -172,45 +232,17 @@ function handleCanvasClick(event) {
             log("👽 Alien Patrol moved!", 'success');
             patrolMode = false;
             document.getElementById('game-container').style.cursor = 'default';
-            grid.render(game.map);
+            grid.render(game.map, selectedHex, game.hero.location);
         } else {
             log(`❌ ${result.reason}`, 'warning');
         }
         return;
     }
 
-    if (exploreMode && !tile.revealed) {
-        // Explore this tile
-        const result = game.explore(hex.q, hex.r);
-
-        if (result.success) {
-            log(`🔍 Explored Lvl ${result.tile.level} ${result.tile.type}! Token: ${result.tile.numberToken}`, 'success');
-
-            if (result.encounter.type === 'combat') {
-                log(`⚔️ ENCOUNTER: ${result.encounter.enemyType} Alien (Lvl ${result.encounter.level})!`, 'danger');
-                showCombatModal(result.encounter);
-            } else if (result.encounter.type === 'loot') {
-                log(`💎 ${result.encounter.message}`, 'success');
-                if (result.encounter.loot) {
-                    applyLoot(result.encounter.loot);
-                }
-            } else {
-                log(`✅ ${result.encounter.message}`);
-            }
-
-            exploreMode = false;
-            document.getElementById('btn-explore').style.background = '';
-            grid.render(game.map);
-            updateUI();
-        } else {
-            log(`❌ ${result.reason}`, 'warning');
-        }
-    } else {
-        // Select tile for building
-        selectedHex = hex;
-        grid.render(game.map, selectedHex);
-        log(`Selected tile: ${key} (${tile.type})`);
-    }
+    // Select tile for building
+    selectedHex = hex;
+    grid.render(game.map, selectedHex, game.hero.location);
+    log(`Selected tile: ${key} (${tile.type})`);
 }
 
 function handleBuildOutpost() {

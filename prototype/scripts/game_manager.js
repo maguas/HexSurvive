@@ -1,53 +1,302 @@
+import { EncounterManager } from './encounter_manager.js';
+
 export class GameManager {
     constructor() {
+        this.encounterManager = new EncounterManager();
         this.resources = {
-            scrap: 3,
-            fuel: 2,
-            food: 3,
+            scrap: 0,
+            fuel: 0,
+            food: 0,
             alloy: 0,
-            intel: 1
+            intel: 0
         };
-
-        this.playerHero = {
-            name: "Commander",
-            level: 1,
-            xp: 0,
-            xpToNext: 10,
-            stats: { tac: 2, str: 2, tech: 2 },
-            gear: {
-                head: null,
-                body: "Flak Jacket",
-                weapon: "Rifle",
-                tech: null
+        // ...
+        this.threatLevel = 1;
+        this.threatTrack = 0; // 0-5
+        this.maxThreatTrack = 5;
+        // ...
+        this.hero = {
+            location: null, // {q, r, edgeIndex}
+            stats: {
+                tactics: 1,
+                strength: 1,
+                tech: 1
             },
-            health: 10,
-            maxHealth: 10
+            health: 3,
+            xp: 0,
+            level: 1,
+            hand: [] // Cards tucked
         };
-
         this.map = new Map();
         this.turn = 1;
-        this.phase = 'production';
+        this.phase = 'production'; // production, action
         this.victoryPoints = 0;
         this.threatLevel = 1;
         this.alienPatrolLocation = null;
         this.currentEncounter = null;
+
+        // Initialize map with HQ
+        this.initMap();
     }
 
-    initGame() {
-        // Create HQ (center tile)
-        this.map.set("0,0", {
-            type: 'bunker',
-            revealed: true,
-            numberToken: null,
-            level: 0,
-            outpost: true,
-            alienPatrol: false
-        });
+    initMap() {
+        const radius = 3;
+        const tileTypes = [
+            'ruins', 'ruins', 'ruins', 'ruins', 'ruins',
+            'wasteland', 'wasteland', 'wasteland', 'wasteland',
+            'overgrown', 'overgrown', 'overgrown', 'overgrown',
+            'crash_site', 'crash_site', 'crash_site',
+            'bunker', 'bunker', 'bunker',
+            'barren', 'barren'
+        ];
 
-        // Add initial neighbors (fog of war)
-        // Add initial neighbors (fog of war)
-        this.addNeighbors(0, 0);
-        this.alienPatrolLocation = null;
+        // Shuffle types
+        for (let i = tileTypes.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [tileTypes[i], tileTypes[j]] = [tileTypes[j], tileTypes[i]];
+        }
+
+        let typeIndex = 0;
+
+        for (let q = -radius; q <= radius; q++) {
+            const r1 = Math.max(-radius, -q - radius);
+            const r2 = Math.min(radius, -q + radius);
+            for (let r = r1; r <= r2; r++) {
+                const type = tileTypes[typeIndex % tileTypes.length];
+                typeIndex++;
+
+                this.map.set(`${q},${r}`, {
+                    type: type,
+                    revealed: false, // All start hidden
+                    q: q,
+                    r: r,
+                    numberToken: null,
+                    outpost: false,
+                    level: Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r)) // Distance from center
+                });
+            }
+        }
+
+        this.phase = 'setup'; // Start in setup phase
+    }
+
+    handleInitialPlacement(q, r, edgeIndex) {
+        if (this.phase !== 'setup') return { success: false, reason: "Not in setup phase" };
+
+        const key = `${q},${r}`;
+        const tile = this.map.get(key);
+        if (!tile) return { success: false, reason: "Invalid tile" };
+
+        // Place Outpost
+        tile.outpost = true;
+        tile.revealed = true;
+        this.victoryPoints++; // +1 VP for Outpost
+
+        // Place Hero
+        this.hero.location = { q, r, edgeIndex };
+
+        // Reveal adjacent via edge
+        this.revealAdjacentTiles(q, r, edgeIndex);
+
+        // End setup
+        this.phase = 'production';
+        return { success: true };
+    }
+
+    getNeighbor(q, r, direction) {
+        const neighbors = [
+            { q: 1, r: 0 }, { q: 0, r: 1 }, { q: -1, r: 1 },
+            { q: -1, r: 0 }, { q: 0, r: -1 }, { q: 1, r: -1 }
+        ];
+        const d = neighbors[direction];
+        return { q: q + d.q, r: r + d.r };
+    }
+
+    // Normalize edge to canonical form (optional, but useful for equality checks)
+    // For now, we'll just handle equivalence in logic
+
+    isValidMove(targetQ, targetR, targetEdge) {
+        if (!this.hero.location) return true; // Initial placement
+
+        const { q, r, edgeIndex } = this.hero.location;
+
+        // Check if target is the same edge (on same or neighbor tile)
+        if (q === targetQ && r === targetR && edgeIndex === targetEdge) return false;
+
+        // Check if target is the shared edge on neighbor (physically same location)
+        const neighbor = this.getNeighbor(q, r, edgeIndex);
+        const sharedEdge = (edgeIndex + 3) % 6;
+        if (targetQ === neighbor.q && targetR === neighbor.r && targetEdge === sharedEdge) return false;
+
+        // Check connectivity
+        // We are at edgeIndex of (q,r).
+        // Vertices are at (edgeIndex) and (edgeIndex + 1).
+
+        // Connected edges at Vertex 1 (edgeIndex + 1):
+        // 1. Next edge on same tile: (edgeIndex + 1) % 6
+        // 2. Edge on neighbor at (edgeIndex):
+        //    Neighbor(edgeIndex) shares edgeIndex. 
+        //    Its next edge from that vertex is... 
+        //    Wait, let's use the simple logic:
+        //    From (q,r,i), valid moves are:
+        //    - (q,r, i+1)
+        //    - (q,r, i-1)
+        //    - Neighbor(i) -> (i+3+1)
+        //    - Neighbor(i) -> (i+3-1)
+        //    - Neighbor(i+1) -> (i+1+3-1) ?? This is getting complex.
+
+        // SIMPLIFIED LOGIC:
+        // Just allow move to any edge on the same tile or adjacent tile that shares a vertex.
+        // But for now, let's just trust the user clicks on a valid edge and validate distance?
+        // No, we need strict validation.
+
+        // Let's list all 4 connected edges physically.
+        const connected = [];
+
+        // 1. Same tile neighbors
+        connected.push({ q, r, edge: (edgeIndex + 1) % 6 });
+        connected.push({ q, r, edge: (edgeIndex + 5) % 6 });
+
+        // 2. Neighbor via current edge (Neighbor A)
+        const nA = this.getNeighbor(q, r, edgeIndex);
+        const nA_shared = (edgeIndex + 3) % 6;
+        connected.push({ q: nA.q, r: nA.r, edge: (nA_shared + 1) % 6 });
+        connected.push({ q: nA.q, r: nA.r, edge: (nA_shared + 5) % 6 });
+
+        // 3. Neighbors via vertices?
+        // Actually, the graph is:
+        // Edge E connects to Vertex V1, V2.
+        // Vertex V1 connects to Edge E, E_next, E_neighbor_next.
+
+        // Let's just check if the target is in the list of 4 connected edges
+        // OR if it is equivalent to one of them.
+
+        for (const c of connected) {
+            if (c.q === targetQ && c.r === targetR && c.edge === targetEdge) return true;
+
+            // Check equivalence (if c is shared with target)
+            const cN = this.getNeighbor(c.q, c.r, c.edge);
+            const cShared = (c.edge + 3) % 6;
+            if (cN.q === targetQ && cN.r === targetR && cShared === targetEdge) return true;
+        }
+
+        return false;
+    }
+
+    revealAdjacentTiles(q, r, edgeIndex) {
+        const newlyRevealed = [];
+
+        // Check current tile
+        const key1 = `${q},${r}`;
+        if (this.map.has(key1)) {
+            const tile = this.map.get(key1);
+            if (!tile.revealed) {
+                tile.revealed = true;
+                newlyRevealed.push(tile);
+            }
+        }
+
+        // Check neighbor tile
+        const n = this.getNeighbor(q, r, edgeIndex);
+        const key2 = `${n.q},${n.r}`;
+        if (this.map.has(key2)) {
+            const tile = this.map.get(key2);
+            if (!tile.revealed) {
+                tile.revealed = true;
+                newlyRevealed.push(tile);
+            }
+        }
+
+        return newlyRevealed;
+    }
+
+    moveHero(q, r, edgeIndex) {
+        if (this.resources.fuel < 1) {
+            return { success: false, reason: "Not enough Fuel" };
+        }
+
+        if (!this.isValidMove(q, r, edgeIndex)) {
+            return { success: false, reason: "Invalid move: Must be adjacent edge" };
+        }
+
+        this.resources.fuel -= 1;
+        this.hero.location = { q, r, edgeIndex };
+
+        // Reveal adjacent tiles and check for encounters
+        const newTiles = this.revealAdjacentTiles(q, r, edgeIndex);
+        const encounters = [];
+
+        for (const tile of newTiles) {
+            // Draw encounter
+            const card = this.encounterManager.drawCard(this.threatLevel);
+            encounters.push({
+                tile: tile,
+                card: card
+            });
+            // For now, just handle the first one to avoid UI stack overflow?
+            // Or return all.
+        }
+
+        return { success: true, encounters: encounters };
+    }
+
+    increaseThreat() {
+        this.threatTrack++;
+        if (this.threatTrack >= this.maxThreatTrack) {
+            this.threatTrack = 0;
+            this.threatLevel++;
+            if (this.threatLevel > 3) {
+                // Game Over condition check handled in UI or specific method
+                return { gameOver: true };
+            }
+        }
+        return { gameOver: false, level: this.threatLevel, track: this.threatTrack };
+    }
+
+    handleEncounterFailure() {
+        this.hero.health -= 1;
+        // Check death
+        if (this.hero.health <= 0) {
+            // Respawn logic
+            this.respawnHero();
+        }
+        return this.increaseThreat();
+    }
+
+    gainXp(amount) {
+        this.hero.xp += amount;
+        // Level up every 3 XP
+        const newLevel = Math.floor(this.hero.xp / 3) + 1;
+        if (newLevel > this.hero.level) {
+            this.hero.level = newLevel;
+            // Level up bonus? GDD says "+1 Combat Die".
+            // We can represent this as a stat increase or just track level.
+            // Let's increase a random stat or just keep level.
+            // For now, just level up.
+            return { levelUp: true, level: newLevel };
+        }
+        return { levelUp: false };
+    }
+
+    addLoot(item) {
+        this.hero.hand.push(item);
+        // Update stats based on item bonus
+        if (item.slot === 'weapon') {
+            this.hero.stats.strength += item.bonus || 0;
+        } else if (item.slot === 'tech') {
+            this.hero.stats.tech += item.bonus || 0;
+        } else if (item.slot === 'body') {
+            // Maybe defense or health?
+            this.hero.health += item.bonus || 0; // Heal? Or Max Health?
+        }
+    }
+
+    respawnHero() {
+        // Logic to move hero to nearest outpost and set inactive
+        // For prototype, just reset health and move to HQ
+        this.hero.health = 3;
+        this.hero.location = { q: 0, r: 0, edgeIndex: 0 };
+        // Inactive logic to be added
     }
 
     moveAlienPatrol(q, r) {
