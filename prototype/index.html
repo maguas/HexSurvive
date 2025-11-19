@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xeno-Hex: Resistance</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- LEFT SIDEBAR: Resources & VP -->
+        <aside id="sidebar-left">
+            <div class="panel header-panel">
+                <h1>XENO-HEX</h1>
+                <div class="vp-display">
+                    <span class="vp-label">Victory Points:</span>
+                    <span id="vp-count" class="vp-value">0</span> / 10
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🎲 Turn <span id="turn-counter">1</span></h2>
+                <div class="phase-indicator">
+                    Phase: <span id="phase-display">Production</span>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>📦 Resources</h2>
+                <div id="resource-display">
+                    <div class="resource-item">
+                        <span class="icon" title="Scrap">🔩</span>
+                        <span class="res-name">Scrap</span>
+                        <span id="res-scrap" class="res-value">0</span>
+                    </div>
+                    <div class="resource-item">
+                        <span class="icon" title="Fuel">⚡</span>
+                        <span class="res-name">Fuel</span>
+                        <span id="res-fuel" class="res-value">0</span>
+                    </div>
+                    <div class="resource-item">
+                        <span class="icon" title="Food">🍏</span>
+                        <span class="res-name">Food</span>
+                        <span id="res-food" class="res-value">0</span>
+                    </div>
+                    <div class="resource-item">
+                        <span class="icon" title="Alloy">🔮</span>
+                        <span class="res-name">Alloy</span>
+                        <span id="res-alloy" class="res-value">0</span>
+                    </div>
+                    <div class="resource-item">
+                        <span class="icon" title="Intel">💾</span>
+                        <span class="res-name">Intel</span>
+                        <span id="res-intel" class="res-value">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>⚡ Actions</h2>
+                <button id="btn-roll-dice" class="action-btn primary">🎲 Roll Dice</button>
+                <button id="btn-explore" class="action-btn" title="Select a fog tile then click">🔍 Explore Mode</button>
+                <button id="btn-build-outpost" class="action-btn">🏠 Build Outpost</button>
+                <button id="btn-train" class="action-btn">📚 Train Hero</button>
+                <button id="btn-end-turn" class="action-btn">⏭️ End Turn</button>
+            </div>
+        </aside>
+
+        <!-- MAIN BOARD AREA -->
+        <main id="board-area">
+            <div id="threat-level">
+                Threat Level: <span id="threat-value">1</span>
+            </div>
+            <canvas id="hex-grid-canvas"></canvas>
+            <div id="dice-result" class="overlay-message hidden">
+                <div class="dice-display">
+                    <span id="die1">●</span>
+                    <span id="die2">●</span>
+                </div>
+                <div id="roll-total">Roll: 7</div>
+            </div>
+            
+            <!-- Combat Modal -->
+            <div id="combat-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h2>⚔️ COMBAT ENCOUNTER</h2>
+                    <div id="combat-info"></div>
+                    <div id="combat-dice-area"></div>
+                    <div class="modal-actions">
+                        <button id="btn-fight" class="action-btn primary">Fight!</button>
+                        <button id="btn-retreat" class="action-btn danger">Retreat</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR: Hero & Log -->
+        <aside id="sidebar-right">
+            <div class="panel">
+                <h2>🦸 Commander</h2>
+                <div id="hero-card">
+                    <div class="hero-name">Commander</div>
+                    <div class="hero-level">Level <span id="hero-level">1</span></div>
+                    <div class="hero-xp">
+                        XP: <span id="hero-xp">0</span> / <span id="hero-xp-next">10</span>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat-item stat-tac">
+                            <span class="stat-label">Tactics</span>
+                            <span id="stat-tac" class="stat-value">2</span>d6
+                        </div>
+                        <div class="stat-item stat-str">
+                            <span class="stat-label">Strength</span>
+                            <span id="stat-str" class="stat-value">2</span>d6
+                        </div>
+                        <div class="stat-item stat-tech">
+                            <span class="stat-label">Tech</span>
+                            <span id="stat-tech" class="stat-value">2</span>d6
+                        </div>
+                    </div>
+                    <div class="hero-gear">
+                        <h3>Equipment</h3>
+                        <div class="gear-item">🪖 Head: <span id="gear-head">-</span></div>
+                        <div class="gear-item">🦺 Body: <span id="gear-body">Flak Jacket</span></div>
+                        <div class="gear-item">🔫 Weapon: <span id="gear-weapon">Rifle</span></div>
+                        <div class="gear-item">📡 Tech: <span id="gear-tech">-</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>📜 Game Log</h2>
+                <div id="game-log"></div>
+            </div>
+        </aside>
+    </div>
+
+    <script type="module" src="scripts/main.js"></script>
+</body>
+</html>
