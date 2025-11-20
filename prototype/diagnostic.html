@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Diagnostic Page</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        #status {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .good {
+            color: #0f0;
+        }
+
+        .bad {
+            color: #f00;
+        }
+
+        canvas {
+            border: 2px solid #fff;
+            display: block;
+            margin: 20px 0;
+            background: #000;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Xeno-Hex Diagnostic</h1>
+    <div id="status"></div>
+    <button onclick="runTest()">Run Diagnostic Test</button>
+    <button onclick="testClick()">Test Canvas Click</button>
+    <canvas id="test-canvas" width="600" height="400"></canvas>
+
+    <script type="module">
+        const status = document.getElementById('status');
+
+        function addStatus(msg, isGood = true) {
+            const div = document.createElement('div');
+            div.className = isGood ? 'good' : 'bad';
+            div.textContent = msg;
+            status.appendChild(div);
+        }
+
+        window.runTest = async function () {
+            status.innerHTML = '<h2>Running Diagnostics...</h2>';
+
+            // Test 1: Module imports
+            try {
+                const { HexGrid } = await import('./scripts/hex_grid.js');
+                addStatus('✅ HexGrid module loaded');
+
+                const { GameManager } = await import('./scripts/game_manager.js');
+                addStatus('✅ GameManager module loaded');
+
+                // Test 2: Create instances
+                const game = new GameManager();
+                addStatus(`✅ Game instance created (${game.map.size} tiles)`);
+
+                const canvas = document.getElementById('test-canvas');
+                const grid = new HexGrid('test-canvas', 600, 400);
+                addStatus('✅ HexGrid instance created');
+
+                // Test 3: Render
+                grid.render(game.map);
+                addStatus('✅ Initial render complete');
+
+                // Test 4: Mouse events
+                let mouseDetected = false;
+                canvas.addEventListener('mousemove', () => {
+                    if (!mouseDetected) {
+                        mouseDetected = true;
+                        addStatus('✅ Mouse move event detected');
+                    }
+                });
+
+                canvas.addEventListener('click', (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    addStatus(`✅ Click detected at (${Math.round(x)}, ${Math.round(y)})`);
+
+                    const hex = grid.pixelToHex(x, y);
+                    addStatus(`✅ Converted to hex (${hex.q}, ${hex.r})`);
+
+                    const tile = game.map.get(`${hex.q},${hex.r}`);
+                    if (tile) {
+                        addStatus(`✅ Tile found: type=${tile.type}, revealed=${tile.revealed}`);
+                    } else {
+                        addStatus('❌ Tile not found in map', false);
+                    }
+                });
+
+                addStatus('✅ Event listeners attached - try clicking the canvas!');
+
+                window.testGrid = grid;
+                window.testGame = game;
+
+            } catch (e) {
+                addStatus(`❌ Error: ${e.message}`, false);
+                console.error(e);
+            }
+        };
+
+        window.testClick = function () {
+            if (window.testGrid && window.testGame) {
+                const canvas = document.getElementById('test-canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Draw a test highlight
+                ctx.strokeStyle = '#ff0';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(200, 150, 200, 100);
+
+                addStatus('✅ Drew test rectangle - can you see a yellow box?');
+            } else {
+                addStatus('❌ Run diagnostic first', false);
+            }
+        };
+
+        // Auto-run on load
+        setTimeout(runTest, 500);
+    </script>
+</body>
+
+</html>

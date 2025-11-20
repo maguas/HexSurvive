@@ -7,21 +7,27 @@ const game = new GameManager();
 const grid = new HexGrid('hex-grid-canvas', 900, 650);
 const combat = new CombatSystem(game);
 
+// Global state
 let selectedHex = null;
-let exploreMode = false;
+let hoveredTile = null;
+let hoveredEdge = null;
 let patrolMode = false;
+let setupOutpostTile = null; // Track where outpost was placed
 
 function init() {
-    game.initGame();
+    // game.initGame();
+    console.log("Initializing game...");
+    console.log("Map size:", game.map.size);
     updateUI();
     grid.render(game.map);
+    console.log("Render called.");
 
     // Event Listeners
     document.getElementById('btn-roll-dice').addEventListener('click', handleRollDice);
-    document.getElementById('btn-explore').addEventListener('click', toggleExploreMode);
+    // document.getElementById('btn-explore').addEventListener('click', toggleExploreMode);
     document.getElementById('btn-build-outpost').addEventListener('click', handleBuildOutpost);
     document.getElementById('btn-upgrade-fortress').addEventListener('click', handleUpgradeFortress);
-    document.getElementById('btn-train').addEventListener('click', handleTrainHero);
+    // document.getElementById('btn-train').addEventListener('click', handleTrainHero);
     document.getElementById('btn-end-turn').addEventListener('click', handleEndTurn);
 
     // Canvas interaction
@@ -33,7 +39,7 @@ function init() {
     document.getElementById('btn-fight').addEventListener('click', handleFight);
     document.getElementById('btn-retreat').addEventListener('click', handleRetreat);
 
-    log("🎮 Game Started! Place your Initial Outpost & Hero (Click an Edge).");
+    log("🎮 SETUP: Click on any tile to place your initial Outpost.");
 }
 
 function updateUI() {
@@ -49,10 +55,16 @@ function updateUI() {
 
     // Turn and Phase
     document.getElementById('turn-counter').textContent = game.turn;
-    document.getElementById('phase-display').textContent = game.phase;
+
+    // Display setup phase more clearly
+    let phaseText = game.phase;
+    if (game.phase === 'setup') {
+        phaseText = setupOutpostTile ? 'Setup: Place Hero' : 'Setup: Place Outpost';
+    }
+    document.getElementById('phase-display').textContent = phaseText;
 
     // Threat Level
-    document.getElementById('threat-value').textContent = game.threatLevel;
+    document.getElementById('threat-value').textContent = `${game.threatLevel} (Track: ${game.threatTrack}/5)`;
 
     // Hero
     const hero = game.hero;
@@ -63,8 +75,12 @@ function updateUI() {
     document.getElementById('stat-str').textContent = hero.stats.strength;
     document.getElementById('stat-tech').textContent = hero.stats.tech;
 
-    // Gear display update needed based on new rules (Cards tucked)
-    // For now, just show stats
+    // Gear / Hand
+    const gearList = hero.hand.map(item => `${item.name} (+${item.bonus} ${item.slot})`).join(', ');
+    document.getElementById('gear-body').textContent = gearList || 'None';
+    document.getElementById('gear-head').textContent = '-'; // Placeholder
+    document.getElementById('gear-weapon').textContent = '-'; // Placeholder
+    document.getElementById('gear-tech').textContent = '-'; // Placeholder;
 
     // Check win condition
     if (game.victoryPoints >= 10) {
@@ -73,18 +89,165 @@ function updateUI() {
     }
 }
 
-// ... handleRollDice ...
+function handleRollDice() {
+    if (game.phase !== 'production') {
+        log("❌ Can only roll dice during production phase", 'warning');
+        return;
+    }
+
+    if (game.phase === 'setup') {
+        log("❌ Complete setup first", 'warning');
+        return;
+    }
+
+    const roll = game.rollDice();
+    log(`🎲 Rolled: ${roll.d1} + ${roll.d2} = ${roll.total}`);
+
+    if (roll.total === 7) {
+        const invasionResult = game.handleInvasion();
+        log(`⚠️ INVASION! Threat Level: ${invasionResult.threatLevel}`, 'danger');
+
+        if (invasionResult.discarded) {
+            const total = Object.values(invasionResult.discarded).reduce((a, b) => a + b, 0);
+            if (total > 0) {
+                log(`💀 Discarded ${total} resources!`, 'danger');
+            }
+        }
+
+        if (invasionResult.needsPatrolMove) {
+            patrolMode = true;
+            document.body.style.cursor = 'crosshair';
+            log("👁️ Click a revealed tile to move the Alien Patrol", 'warning');
+        }
+    } else {
+        const gains = game.harvest(roll.total);
+        if (gains) {
+            let msg = '📦 Gained: ';
+            const items = [];
+            for (const [res, amt] of Object.entries(gains)) {
+                if (amt > 0) items.push(`${amt} ${res}`);
+            }
+            if (items.length > 0) {
+                log(msg + items.join(', '), 'success');
+            }
+        }
+    }
+
+    game.phase = 'action';
+    updateUI();
+    grid.render(game.map, selectedHex, game.hero.location);
+}
+
+function handleEndTurn() {
+    const result = game.endTurn();
+
+    // Passive resource income at start of turn
+    let fuelGained = 0;
+    let foodGained = 0;
+
+    game.map.forEach((tile) => {
+        if (tile.outpost) {
+            if (tile.fortress) {
+                fuelGained += 2;
+                foodGained += 2;
+            } else {
+                fuelGained += 1;
+                foodGained += 1;
+            }
+        }
+    });
+
+    game.resources.fuel += fuelGained;
+    game.resources.food += foodGained;
+
+    log(`--- Turn ${game.turn} ---`);
+    log(`⚡ +${fuelGained} Fuel, 🍏 +${foodGained} Food (from outposts)`, 'success');
+
+    // Display food consumption
+    if (result.distance > 0) {
+        if (result.foodConsumed > 0) {
+            log(`🍏 Consumed ${result.foodConsumed} Food (${result.distance} tiles from outpost)`, 'warning');
+        }
+
+        if (result.heroReturned) {
+            log(`⚠️ Not enough food! Hero returned to nearest outpost`, 'danger');
+            grid.render(game.map, selectedHex, game.hero.location);
+        }
+    }
+
+    updateUI();
+}
+
+function handleFight() {
+    // Combat handling is done via resolveEncounter
+}
+
+function handleRetreat() {
+    const result = combat.retreat();
+    log(result.message, 'warning');
+    closeCombatModal();
+    updateUI();
+}
 
 function handleCanvasMouseMove(event) {
     const rect = event.target.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    const edgeData = grid.getClosestEdge(mouseX, mouseY);
+    const heroLoc = game.hero && game.hero.location ? game.hero.location : null;
 
-    // Only highlight if close to the edge (optional threshold)
-    // For now, just highlight closest edge
-    grid.render(game.map, selectedHex, game.hero.location, edgeData);
+    // SETUP PHASE: Highlight tiles or edges based on step
+    if (game.phase === 'setup') {
+        if (!setupOutpostTile) {
+            // Phase 1: Placing outpost - highlight tiles
+            const hex = grid.pixelToHex(mouseX, mouseY);
+            hoveredTile = hex;
+            hoveredEdge = null;
+            grid.render(game.map, hoveredTile, heroLoc, null);
+        } else {
+            // Phase 2: Placing hero - highlight edges around outpost tile only
+            const edgeData = grid.getClosestEdge(mouseX, mouseY);
+
+            if (edgeData.q === setupOutpostTile.q && edgeData.r === setupOutpostTile.r) {
+                hoveredEdge = edgeData;
+                hoveredTile = null;
+                grid.render(game.map, null, heroLoc, hoveredEdge);
+            } else {
+                hoveredEdge = null;
+                grid.render(game.map, null, heroLoc, null);
+            }
+        }
+        return;
+    }
+
+    // PATROL MODE: Highlight tiles only
+    if (patrolMode) {
+        const hex = grid.pixelToHex(mouseX, mouseY);
+        const tile = game.map.get(`${hex.q},${hex.r}`);
+
+        if (tile && tile.revealed) {
+            hoveredTile = hex;
+            grid.render(game.map, hoveredTile, heroLoc, null);
+        } else {
+            grid.render(game.map, null, heroLoc, null);
+        }
+        return;
+    }
+
+    // ACTION PHASE: Highlight edges for movement
+    if (game.phase === 'action') {
+        const edgeData = grid.getClosestEdge(mouseX, mouseY);
+        hoveredEdge = edgeData;
+        hoveredTile = null;
+        grid.render(game.map, selectedHex, heroLoc, hoveredEdge);
+        return;
+    }
+
+    // PRODUCTION PHASE: No highlights
+    if (game.phase === 'production') {
+        grid.render(game.map, selectedHex, heroLoc, null);
+        return;
+    }
 }
 
 function handleCanvasClick(event) {
@@ -92,66 +255,146 @@ function handleCanvasClick(event) {
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    // Check if clicking on an edge for movement or setup
-    const edgeData = grid.getClosestEdge(mouseX, mouseY);
-    const mid = grid.getEdgeMidpoint(edgeData.q, edgeData.r, edgeData.edgeIndex);
-    const dist = Math.sqrt(Math.pow(mouseX - mid.x, 2) + Math.pow(mouseY - mid.y, 2));
+    console.log("Canvas clicked at:", mouseX, mouseY);
+    console.log("Game phase:", game.phase);
+    console.log("Setup outpost tile:", setupOutpostTile);
 
-    // Threshold for edge click vs tile click (e.g., 15px from edge center)
-    if (dist < 20) {
-        if (game.phase === 'setup') {
-            const result = game.handleInitialPlacement(edgeData.q, edgeData.r, edgeData.edgeIndex);
-            if (result.success) {
-                log("🏠 Initial Outpost & Hero placed!", 'success');
-                log("🎲 Roll dice to start your turn.", 'info');
-                updateUI();
-                grid.render(game.map, null, game.hero.location);
-            } else {
-                log(`❌ ${result.reason}`, 'warning');
+    // ===== SETUP PHASE =====
+    if (game.phase === 'setup') {
+        if (!setupOutpostTile) {
+            // STEP 1: Place outpost on tile
+            const hex = grid.pixelToHex(mouseX, mouseY);
+            const key = `${hex.q},${hex.r}`;
+            const tile = game.map.get(key);
+
+            if (!tile) {
+                log("❌ Invalid tile", 'warning');
+                return;
             }
+
+            // Place outpost
+            tile.outpost = true;
+            tile.revealed = true;
+            tile.numberToken = game.generateNumberToken();
+            game.victoryPoints++;
+            setupOutpostTile = { q: hex.q, r: hex.r };
+
+            log("🏠 Outpost placed! Now click on an edge around the outpost to place your Hero.", 'success');
+            updateUI();
+            grid.render(game.map, null, null, null);
+        } else {
+            // STEP 2: Place hero on edge
+            const edgeData = grid.getClosestEdge(mouseX, mouseY);
+
+            // Validate edge is on outpost tile
+            if (edgeData.q !== setupOutpostTile.q || edgeData.r !== setupOutpostTile.r) {
+                log("❌ Hero must be placed on an edge of the outpost tile", 'warning');
+                return;
+            }
+
+            // Place hero
+            game.hero.location = { q: edgeData.q, r: edgeData.r, edgeIndex: edgeData.edgeIndex };
+
+            // Reveal adjacent tiles
+            game.revealAdjacentTiles(edgeData.q, edgeData.r, edgeData.edgeIndex);
+
+            // End setup
+            game.phase = 'production';
+            setupOutpostTile = null;
+
+            log("🦸 Hero placed! Click 'Roll Dice' to begin your turn.", 'success');
+            updateUI();
+            grid.render(game.map, null, game.hero.location, null);
+        }
+        return;
+    }
+
+    // ===== PATROL MODE (Tile clicks only) =====
+    if (patrolMode) {
+        const hex = grid.pixelToHex(mouseX, mouseY);
+        const key = `${hex.q},${hex.r}`;
+        const tile = game.map.get(key);
+
+        if (!tile || !tile.revealed) {
+            log("❌ Can only move patrol to revealed tiles", 'warning');
             return;
         }
 
-        // Attempt move
-        const result = game.moveHero(edgeData.q, edgeData.r, edgeData.edgeIndex);
+        const result = game.moveAlienPatrol(hex.q, hex.r);
         if (result.success) {
-            log("🏃 Hero moved!", 'success');
+            log("👽 Alien Patrol moved!", 'success');
+            patrolMode = false;
+            document.body.style.cursor = 'default';
             updateUI();
             grid.render(game.map, selectedHex, game.hero.location);
-
-            // Handle Encounters
-            if (result.encounters && result.encounters.length > 0) {
-                // For prototype, just handle the first one
-                const encounter = result.encounters[0];
-                log(`⚠️ Encounter at ${encounter.tile.type}: ${encounter.card.title}`, 'warning');
-                showEncounterModal(encounter.card);
-            }
         } else {
             log(`❌ ${result.reason}`, 'warning');
         }
         return;
     }
 
-    // ...
+    // ===== ACTION PHASE (Edge clicks for movement only) =====
+    if (game.phase === 'action') {
+        const edgeData = grid.getClosestEdge(mouseX, mouseY);
+        const mid = grid.getEdgeMidpoint(edgeData.q, edgeData.r, edgeData.edgeIndex);
+        const dist = Math.sqrt(Math.pow(mouseX - mid.x, 2) + Math.pow(mouseY - mid.y, 2));
 
-    function showEncounterModal(card) {
-        // Reuse combat modal structure or create new one
-        // For now, let's assume it's a combat/hazard that uses the combat system
-        // Or a stash that gives loot immediately
+        // Threshold for edge click (40px)
+        if (dist < 40) {
+            // Attempt move
+            const result = game.moveHero(edgeData.q, edgeData.r, edgeData.edgeIndex);
+            if (result.success) {
+                if (result.movedToOutpost) {
+                    log("🏃 Hero moved to outpost edge (FREE)!", 'success');
+                } else {
+                    log("🏃 Hero moved! (-2 Fuel)", 'success');
+                }
+                updateUI();
+                grid.render(game.map, selectedHex, game.hero.location);
 
-        if (card.type === 'stash') {
-            log(`🎁 Found Stash: ${card.title}`, 'success');
-            applyReward(card.reward);
+                // Handle Encounters
+                if (result.encounters && result.encounters.length > 0) {
+                    // For prototype, just handle the first one
+                    const encounter = result.encounters[0];
+                    log(`⚠️ Encounter at ${encounter.tile.type}: ${encounter.card.title}`, 'warning');
+                    showEncounterModal(encounter.card);
+                }
+            } else {
+                log(`❌ ${result.reason}`, 'warning');
+            }
             return;
+        } else {
+            log("❌ Click closer to an edge to move", 'warning');
         }
+        return;
+    }
 
-        // Combat or Hazard
-        const modal = document.getElementById('combat-modal');
-        const combatInfo = document.getElementById('combat-info');
-        const combatDiceArea = document.getElementById('combat-dice-area');
+    // ===== PRODUCTION PHASE (No clicks allowed) =====
+    if (game.phase === 'production') {
+        log("❌ Roll dice first to enter action phase", 'warning');
+        return;
+    }
+}
 
-        // Mock combat data for display
-        combatInfo.innerHTML = `
+// ...
+
+function showEncounterModal(card) {
+    if (card.type === 'stash') {
+        log(`🎁 Found Stash: ${card.title}`, 'success');
+        applyReward(card.reward);
+        return;
+    }
+
+    // Combat or Hazard
+    const modal = document.getElementById('combat-modal');
+    const combatInfo = document.getElementById('combat-info');
+    const combatDiceArea = document.getElementById('combat-dice-area');
+
+    // Initiate Combat
+    const combatData = combat.initiateCombat(card);
+
+    // Display Enemy
+    combatInfo.innerHTML = `
         <div class="enemy-card">
             <h3>${card.title} (Lvl ${card.level})</h3>
             <p>${card.description}</p>
@@ -165,84 +408,53 @@ function handleCanvasClick(event) {
         </div>
     `;
 
-        // Setup buttons for resolution (Mocking the combat flow for now)
-        combatDiceArea.innerHTML = `
-        <button id="btn-resolve-encounter" class="btn btn-primary">Roll Dice & Resolve</button>
+    // Display Player Dice
+    combatDiceArea.innerHTML = `
+        <h4>Your Dice:</h4>
+        <div class="dice-container">
+            ${combat.getDiceHTML(combatData.playerDice)}
+        </div>
     `;
 
-        document.getElementById('btn-resolve-encounter').onclick = () => resolveEncounter(card);
+    // Setup buttons
+    document.getElementById('btn-fight').onclick = () => resolveEncounter();
+    document.getElementById('btn-retreat').onclick = () => handleRetreat();
 
-        modal.classList.remove('hidden');
-    }
+    modal.classList.remove('hidden');
+}
 
-    function resolveEncounter(card) {
-        // Simple resolution for prototype
-        // In real game, use CombatSystem
-        const hero = game.hero;
-        const roll = Math.floor(Math.random() * 6) + 1 + hero.stats.strength; // Mock roll
+function resolveEncounter() {
+    const result = combat.resolveCombat();
 
-        log(`🎲 Rolled ${roll} vs Defense ${card.enemy.defense}`);
-
-        if (roll >= card.enemy.defense) {
-            log(`✅ Victory!`, 'success');
-            applyReward(card.reward);
-        } else {
-            log(`❌ Defeat!`, 'danger');
-            const threatResult = game.handleEncounterFailure();
-            if (threatResult.gameOver) {
-                alert("GAME OVER! The Alien Threat has overwhelmed you.");
-                location.reload();
-            }
-            log(`Threat increased to Level ${threatResult.level} (Track: ${threatResult.track}/5)`, 'danger');
+    if (result.victory) {
+        log(`✅ Victory!`, 'success');
+        applyReward(result.reward);
+    } else {
+        log(`❌ Defeat! ${result.message}`, 'danger');
+        const threatResult = game.handleEncounterFailure();
+        if (threatResult.gameOver) {
+            alert("GAME OVER! The Alien Threat has overwhelmed you.");
+            location.reload();
         }
-
-        closeCombatModal();
-        updateUI();
+        log(`Threat increased to Level ${threatResult.level} (Track: ${threatResult.track}/5)`, 'danger');
     }
 
-    function applyReward(reward) {
-        if (reward.type === 'xp') {
-            const result = game.gainXp(reward.value);
-            log(`✨ Gained ${reward.value} XP Cube! (Total: ${game.hero.xp})`, 'success');
-            if (result.levelUp) {
-                log(`🆙 Level Up! +1 Combat Die`, 'success');
-            }
-        } else if (reward.type === 'loot') {
-            game.addLoot(reward.item);
-            log(`🎒 Looted: ${reward.item.name}`, 'success');
+    closeCombatModal();
+    updateUI();
+}
+
+function applyReward(reward) {
+    if (reward.type === 'xp') {
+        const result = game.gainXp(reward.value);
+        log(`✨ Gained ${reward.value} XP Cube! (Total: ${game.hero.xp})`, 'success');
+        if (result.levelUp) {
+            log(`🆙 Level Up! +1 Combat Die`, 'success');
         }
-        updateUI();
+    } else if (reward.type === 'loot') {
+        game.addLoot(reward.item);
+        log(`🎒 Looted: ${reward.item.name}`, 'success');
     }
-
-    // Otherwise, tile click
-    const hex = grid.pixelToHex(mouseX, mouseY);
-    const key = `${hex.q},${hex.r}`;
-    const tile = game.map.get(key);
-
-    if (!tile) return;
-
-    if (game.phase === 'setup') {
-        log("⚠️ Click on an EDGE to place your Outpost and Hero.", 'warning');
-        return;
-    }
-
-    if (patrolMode) {
-        const result = game.moveAlienPatrol(hex.q, hex.r);
-        if (result.success) {
-            log("👽 Alien Patrol moved!", 'success');
-            patrolMode = false;
-            document.getElementById('game-container').style.cursor = 'default';
-            grid.render(game.map, selectedHex, game.hero.location);
-        } else {
-            log(`❌ ${result.reason}`, 'warning');
-        }
-        return;
-    }
-
-    // Select tile for building
-    selectedHex = hex;
-    grid.render(game.map, selectedHex, game.hero.location);
-    log(`Selected tile: ${key} (${tile.type})`);
+    updateUI();
 }
 
 function handleBuildOutpost() {
@@ -294,12 +506,6 @@ function handleTrainHero() {
     }
 }
 
-function handleEndTurn() {
-    game.endTurn();
-    log(`⏭️ Turn ${game.turn} started`, 'success');
-    updateUI();
-}
-
 function showCombatModal(encounter) {
     const modal = document.getElementById('combat-modal');
     const combatInfo = document.getElementById('combat-info');
@@ -325,39 +531,8 @@ function showCombatModal(encounter) {
     modal.classList.remove('hidden');
 }
 
-function handleFight() {
-    const result = combat.resolveCombat();
-
-    if (result.victory) {
-        log(`⚔️ Victory! Defeated enemy. +${result.xpGained} XP`, 'success');
-        if (result.loot) {
-            applyLoot(result.loot);
-        }
-    } else if (result.defeated) {
-        log(`💀 ${result.message}`, 'danger');
-    } else {
-        log(`⚠️ ${result.message} (Took ${result.damageTaken} damage)`, 'warning');
-    }
-
-    closeCombatModal();
-    updateUI();
-}
-
-function handleRetreat() {
-    const result = combat.retreat();
-    log(`🏃 ${result.message}`, 'warning');
-    closeCombatModal();
-    updateUI();
-}
-
 function closeCombatModal() {
     document.getElementById('combat-modal').classList.add('hidden');
-}
-
-function applyLoot(loot) {
-    game.playerHero.gear[loot.slot] = loot.name;
-    game.playerHero.stats[loot.slot === 'weapon' ? 'str' : 'tech']++;
-    log(`💎 Equipped: ${loot.name} (+${loot.bonus} bonus)`, 'success');
 }
 
 function log(msg, type = '') {
@@ -420,5 +595,9 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Start the game
-init();
+// Start the game when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

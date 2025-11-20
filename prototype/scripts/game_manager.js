@@ -5,7 +5,7 @@ export class GameManager {
         this.encounterManager = new EncounterManager();
         this.resources = {
             scrap: 0,
-            fuel: 0,
+            fuel: 1,
             food: 0,
             alloy: 0,
             intel: 0
@@ -29,7 +29,7 @@ export class GameManager {
         };
         this.map = new Map();
         this.turn = 1;
-        this.phase = 'production'; // production, action
+        this.phase = 'setup'; // Start in setup, will change to production after initial placement
         this.victoryPoints = 0;
         this.threatLevel = 1;
         this.alienPatrolLocation = null;
@@ -192,6 +192,10 @@ export class GameManager {
             const tile = this.map.get(key1);
             if (!tile.revealed) {
                 tile.revealed = true;
+                // Only assign number tokens to non-barren tiles
+                if (tile.type !== 'barren') {
+                    tile.numberToken = this.generateNumberToken();
+                }
                 newlyRevealed.push(tile);
             }
         }
@@ -203,6 +207,10 @@ export class GameManager {
             const tile = this.map.get(key2);
             if (!tile.revealed) {
                 tile.revealed = true;
+                // Only assign number tokens to non-barren tiles
+                if (tile.type !== 'barren') {
+                    tile.numberToken = this.generateNumberToken();
+                }
                 newlyRevealed.push(tile);
             }
         }
@@ -211,15 +219,27 @@ export class GameManager {
     }
 
     moveHero(q, r, edgeIndex) {
-        if (this.resources.fuel < 1) {
-            return { success: false, reason: "Not enough Fuel" };
+        // Check if destination edge is on an outpost tile (either side of the edge)
+        const tile1 = this.map.get(`${q},${r}`);
+        const neighbor = this.getNeighbor(q, r, edgeIndex);
+        const tile2 = this.map.get(`${neighbor.q},${neighbor.r}`);
+
+        const movingToOutpost = (tile1 && tile1.outpost) || (tile2 && tile2.outpost);
+
+        // Moving to outpost edges is FREE, otherwise costs 2 fuel
+        if (!movingToOutpost && this.resources.fuel < 2) {
+            return { success: false, reason: "Not enough Fuel (need 2, or move to an outpost edge for free)" };
         }
 
         if (!this.isValidMove(q, r, edgeIndex)) {
             return { success: false, reason: "Invalid move: Must be adjacent edge" };
         }
 
-        this.resources.fuel -= 1;
+        // Only consume fuel if NOT moving to an outpost
+        if (!movingToOutpost) {
+            this.resources.fuel -= 2;
+        }
+
         this.hero.location = { q, r, edgeIndex };
 
         // Reveal adjacent tiles and check for encounters
@@ -237,7 +257,7 @@ export class GameManager {
             // Or return all.
         }
 
-        return { success: true, encounters: encounters };
+        return { success: true, encounters: encounters, movedToOutpost: movingToOutpost };
     }
 
     increaseThreat() {
@@ -347,31 +367,60 @@ export class GameManager {
             return null; // Invasion event
         }
 
-        this.map.forEach((tile) => {
-            if (tile.revealed && tile.numberToken === rollValue && tile.outpost && !tile.alienPatrol) {
-                const amount = tile.fortress ? 2 : 1;
+        console.log(`🎲 Harvest roll: ${rollValue}`);
 
-                switch (tile.type) {
-                    case 'ruins':
-                        gains.scrap += amount;
-                        this.resources.scrap += amount;
-                        break;
-                    case 'wasteland':
-                        gains.fuel += amount;
-                        this.resources.fuel += amount;
-                        break;
-                    case 'overgrown':
-                        gains.food += amount;
-                        this.resources.food += amount;
-                        break;
-                    case 'crash_site':
-                        gains.alloy += amount;
-                        this.resources.alloy += amount;
-                        break;
-                    case 'bunker':
-                        gains.intel += amount;
-                        this.resources.intel += amount;
-                        break;
+        // Get tiles adjacent to hero
+        const heroAdjacentTiles = [];
+        if (this.hero.location) {
+            const heroQ = this.hero.location.q;
+            const heroR = this.hero.location.r;
+            const heroEdge = this.hero.location.edgeIndex;
+
+            // Add the tile the hero's edge is on
+            heroAdjacentTiles.push({ q: heroQ, r: heroR });
+
+            // Add the neighbor tile across the edge
+            const neighbor = this.getNeighbor(heroQ, heroR, heroEdge);
+            heroAdjacentTiles.push({ q: neighbor.q, r: neighbor.r });
+
+            console.log(`Hero at (${heroQ}, ${heroR}) edge ${heroEdge}`);
+            console.log(`Hero-adjacent tiles:`, heroAdjacentTiles);
+        }
+
+        // Check ALL tiles on the map
+        this.map.forEach((tile) => {
+            if (tile.revealed && tile.numberToken === rollValue && !tile.alienPatrol) {
+                const isHeroAdjacent = heroAdjacentTiles.some(ht => ht.q === tile.q && ht.r === tile.r);
+                const hasOutpost = tile.outpost;
+
+                // Produce if either: hero is adjacent OR tile has outpost
+                if (isHeroAdjacent || hasOutpost) {
+                    const amount = tile.fortress ? 2 : 1;
+                    const source = hasOutpost ? (isHeroAdjacent ? "outpost+hero" : "outpost") : "hero";
+                    console.log(`✅ Producing ${amount} ${tile.type} from (${tile.q}, ${tile.r}) [${source}]`);
+
+                    switch (tile.type) {
+                        case 'ruins':
+                            gains.scrap += amount;
+                            this.resources.scrap += amount;
+                            break;
+                        case 'wasteland':
+                            gains.fuel += amount;
+                            this.resources.fuel += amount;
+                            break;
+                        case 'overgrown':
+                            gains.food += amount;
+                            this.resources.food += amount;
+                            break;
+                        case 'crash_site':
+                            gains.alloy += amount;
+                            this.resources.alloy += amount;
+                            break;
+                        case 'bunker':
+                            gains.intel += amount;
+                            this.resources.intel += amount;
+                            break;
+                    }
                 }
             }
         });
@@ -642,8 +691,77 @@ export class GameManager {
         });
     }
 
+    getDistanceToNearestOutpost() {
+        if (!this.hero.location) return 0;
+
+        let minDistance = Infinity;
+
+        this.map.forEach((tile) => {
+            if (tile.outpost) {
+                // Calculate hex distance from hero to this outpost
+                const heroQ = this.hero.location.q;
+                const heroR = this.hero.location.r;
+                const distance = (Math.abs(heroQ - tile.q) + Math.abs(heroR - tile.r) + Math.abs((heroQ + heroR) - (tile.q + tile.r))) / 2;
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                }
+            }
+        });
+
+        return minDistance === Infinity ? 0 : Math.floor(minDistance);
+    }
+
+    getNearestOutpost() {
+        if (!this.hero.location) return null;
+
+        let nearestOutpost = null;
+        let minDistance = Infinity;
+
+        this.map.forEach((tile) => {
+            if (tile.outpost) {
+                const heroQ = this.hero.location.q;
+                const heroR = this.hero.location.r;
+                const distance = (Math.abs(heroQ - tile.q) + Math.abs(heroR - tile.r) + Math.abs((heroQ + heroR) - (tile.q + tile.r))) / 2;
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestOutpost = { q: tile.q, r: tile.r };
+                }
+            }
+        });
+
+        return nearestOutpost;
+    }
+
     endTurn() {
+        // Calculate food consumption based on distance to nearest outpost
+        const distance = this.getDistanceToNearestOutpost();
+        const foodNeeded = distance;
+
+        let heroReturned = false;
+        if (foodNeeded > 0) {
+            if (this.resources.food >= foodNeeded) {
+                // Consume food
+                this.resources.food -= foodNeeded;
+            } else {
+                // Not enough food - hero returns to nearest outpost
+                const nearestOutpost = this.getNearestOutpost();
+                if (nearestOutpost) {
+                    this.hero.location = { q: nearestOutpost.q, r: nearestOutpost.r, edgeIndex: 0 };
+                    heroReturned = true;
+                }
+            }
+        }
+
         this.turn++;
         this.phase = 'production';
+
+        return {
+            foodConsumed: foodNeeded <= this.resources.food ? foodNeeded : 0,
+            foodNeeded: foodNeeded,
+            heroReturned: heroReturned,
+            distance: distance
+        };
     }
 }

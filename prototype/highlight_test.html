@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Highlight Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        canvas {
+            border: 2px solid #fff;
+            display: block;
+            margin: 20px 0;
+            background: #000;
+        }
+
+        #log {
+            background: #2a2a2a;
+            padding: 10px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Highlight Test</h1>
+    <div id="log">Hover over tiles to see highlighting...</div>
+    <canvas id="hex-grid-canvas" width="900" height="650"></canvas>
+
+    <script type="module">
+        import { HexGrid } from './scripts/hex_grid.js';
+        import { GameManager } from './scripts/game_manager.js';
+
+        const game = new GameManager();
+        const grid = new HexGrid('hex-grid-canvas', 900, 650);
+        const log = document.getElementById('log');
+
+        let hoveredTile = null;
+        let clickedTile = null;
+
+        // Initial render
+        grid.render(game.map);
+        log.innerHTML = '✅ Board rendered. Map has ' + game.map.size + ' tiles<br>Move mouse to test highlighting!';
+
+        const canvas = document.getElementById('hex-grid-canvas');
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const hex = grid.pixelToHex(x, y);
+            hoveredTile = hex;
+
+            // Re-render with highlight
+            grid.render(game.map, hoveredTile, null, null);
+
+            log.innerHTML = `Hovering: Hex (${hex.q}, ${hex.r})<br>Mouse at (${Math.round(x)}, ${Math.round(y)})`;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const hex = grid.pixelToHex(x, y);
+            clickedTile = hex;
+
+            const key = `${hex.q},${hex.r}`;
+            const tile = game.map.get(key);
+
+            if (tile) {
+                // Mark as revealed to see it better
+                tile.revealed = true;
+                tile.outpost = true;
+
+                grid.render(game.map, hoveredTile, null, null);
+
+                log.innerHTML = `✅ Clicked: Hex (${hex.q}, ${hex.r})<br>Type: ${tile.type}<br>Outpost placed!`;
+            } else {
+                log.innerHTML = `❌ Clicked: Hex (${hex.q}, ${hex.r}) - No tile here`;
+            }
+        });
+
+        log.innerHTML += '<br><strong>Instructions:</strong> Move mouse to highlight tiles (yellow border). Click to place outpost and reveal tile.';
+    </script>
+</body>
+
+</html>

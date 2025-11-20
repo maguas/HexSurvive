@@ -85,8 +85,18 @@ export class HexGrid {
             this.drawTileInfo(x, y, tileData);
         }
 
-        // Selection highlight
+        // Selection highlight - need to redraw path
         if (isSelected) {
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle_deg = 60 * i - 30;
+                const angle_rad = Math.PI / 180 * angle_deg;
+                const px = x + this.hexSize * Math.cos(angle_rad);
+                const py = y + this.hexSize * Math.sin(angle_rad);
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
             ctx.strokeStyle = "#ffff00";
             ctx.lineWidth = 4;
             ctx.stroke();

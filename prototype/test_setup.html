@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Setup Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial;
+        }
+
+        canvas {
+            border: 2px solid #000;
+            background: #0a0a0a;
+            display: block;
+            margin: 20px 0;
+        }
+
+        #log {
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Xeno-Hex Setup Test</h1>
+    <div id="log"></div>
+    <canvas id="hex-grid-canvas" width="900" height="650"></canvas>
+
+    <script type="module">
+        import { HexGrid } from './scripts/hex_grid.js';
+        import { GameManager } from './scripts/game_manager.js';
+
+        const game = new GameManager();
+        const grid = new HexGrid('hex-grid-canvas', 900, 650);
+        const log = document.getElementById('log');
+
+        let setupOutpostTile = null;
+        let hoveredTile = null;
+
+        function addLog(msg) {
+            log.innerHTML += msg + '<br>';
+            console.log(msg);
+        }
+
+        addLog('✅ Game initialized');
+        addLog('Phase: ' + game.phase);
+        addLog('Map size: ' + game.map.size);
+
+        // Initial render
+        grid.render(game.map);
+        addLog('✅ Initial render complete');
+
+        const canvas = document.getElementById('hex-grid-canvas');
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            if (!setupOutpostTile) {
+                const hex = grid.pixelToHex(x, y);
+                hoveredTile = hex;
+                grid.render(game.map, hoveredTile, null, null);
+            }
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            addLog(`Click at (${Math.round(x)}, ${Math.round(y)})`);
+
+            if (!setupOutpostTile) {
+                const hex = grid.pixelToHex(x, y);
+                const key = `${hex.q},${hex.r}`;
+                const tile = game.map.get(key);
+
+                if (tile) {
+                    tile.outpost = true;
+                    tile.revealed = true;
+                    setupOutpostTile = { q: hex.q, r: hex.r };
+                    addLog(`✅ Outpost placed at (${hex.q}, ${hex.r})`);
+                    grid.render(game.map, null, null, null);
+                } else {
+                    addLog(`❌ Invalid tile`);
+                }
+            }
+        });
+
+        addLog('✅ Event listeners attached');
+        addLog('💡 Hover over tiles to see highlighting');
+        addLog('💡 Click center tile to place outpost');
+    </script>
+</body>
+
+</html>

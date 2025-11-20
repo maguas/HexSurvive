@@ -6,61 +6,32 @@ export class CombatSystem {
         this.result = null;
     }
 
-    initiateCombat(encounter) {
-        this.currentEnemy = encounter;
+    initiateCombat(encounterCard) {
+        this.currentEncounter = encounterCard;
         this.result = null;
 
         // Roll hero dice based on stats
-        const hero = this.game.playerHero;
+        const hero = this.game.hero; // Changed from playerHero to hero
         this.playerDice = this.rollHeroDice(hero);
 
         return {
-            enemy: this.currentEnemy,
+            enemy: this.currentEncounter.enemy, // Access enemy data from card
             playerDice: this.playerDice
         };
     }
 
-    rollHeroDice(hero) {
-        const dice = [];
-
-        // Roll Tactics dice (Yellow)
-        for (let i = 0; i < hero.stats.tac; i++) {
-            dice.push({
-                type: 'tac',
-                value: Math.floor(Math.random() * 6) + 1,
-                color: '#ffd700'
-            });
-        }
-
-        // Roll Strength dice (Red)
-        for (let i = 0; i < hero.stats.str; i++) {
-            dice.push({
-                type: 'str',
-                value: Math.floor(Math.random() * 6) + 1,
-                color: '#f44336'
-            });
-        }
-
-        // Roll Tech dice (Blue)
-        for (let i = 0; i < hero.stats.tech; i++) {
-            dice.push({
-                type: 'tech',
-                value: Math.floor(Math.random() * 6) + 1,
-                color: '#40c4ff'
-            });
-        }
-
-        return dice;
-    }
+    // ... rollHeroDice ...
 
     resolveCombat() {
-        const enemy = this.currentEnemy;
+        const card = this.currentEncounter;
+        const enemyData = card.enemy;
+
         let remainingDice = [...this.playerDice];
         let coveredSlots = 0;
-        let totalSlots = enemy.slots.length;
+        let totalSlots = enemyData.slots.length;
 
         // Sort slots: specific types first
-        const sortedSlots = [...enemy.slots].sort((a, b) => {
+        const sortedSlots = [...enemyData.slots].sort((a, b) => {
             if (a.type !== 'any' && b.type === 'any') return -1;
             if (a.type === 'any' && b.type !== 'any') return 1;
             return b.value - a.value;
@@ -94,50 +65,61 @@ export class CombatSystem {
         }
 
         const allCovered = coveredSlots === totalSlots;
-        const damageToHero = allCovered ? 0 : enemy.damage; // Take full damage if not fully covered? Or partial?
-        // Let's say: Take damage for each uncovered slot? 
-        // GDD says: "Lose: Hero takes damage".
-        // Let's keep it simple: If not all covered, take damage.
 
         if (allCovered) {
             // Victory
-            this.game.playerHero.xp += enemy.reward.xp;
-
-            if (this.game.playerHero.xp >= this.game.playerHero.xpToNext) {
-                this.game.levelUpHero();
-            }
-
+            // XP handling is done in GameManager now via result
             this.result = {
                 victory: true,
-                damageDealt: 100, // Abstract
+                damageDealt: 100,
                 damageTaken: 0,
-                xpGained: enemy.reward.xp,
-                loot: enemy.reward.loot
+                reward: card.reward
             };
         } else {
             // Defeat
-            this.game.playerHero.health -= damageToHero;
-
-            if (this.game.playerHero.health <= 0) {
-                this.game.playerHero.health = 0;
-                this.result = {
-                    victory: false,
-                    defeated: true,
-                    message: "Your hero was defeated! Lose 1 VP."
-                };
-                this.game.victoryPoints = Math.max(0, this.game.victoryPoints - 1);
-                this.game.playerHero.health = this.game.playerHero.maxHealth;
-            } else {
-                this.result = {
-                    victory: false,
-                    damageDealt: coveredSlots,
-                    damageTaken: damageToHero,
-                    message: `Covered ${coveredSlots}/${totalSlots} slots. Took ${damageToHero} damage!`
-                };
-            }
+            // Damage handling is done in GameManager
+            this.result = {
+                victory: false,
+                damageDealt: coveredSlots,
+                damageTaken: 1, // Standard 1 damage on failure
+                message: `Covered ${coveredSlots}/${totalSlots} slots. Failed!`
+            };
         }
 
         return this.result;
+    }
+
+    rollHeroDice(hero) {
+        const dice = [];
+
+        // Roll Tactics dice (Yellow)
+        for (let i = 0; i < hero.stats.tactics; i++) {
+            dice.push({
+                type: 'tac',
+                value: Math.floor(Math.random() * 6) + 1,
+                color: '#ffd700'
+            });
+        }
+
+        // Roll Strength dice (Red)
+        for (let i = 0; i < hero.stats.strength; i++) {
+            dice.push({
+                type: 'str',
+                value: Math.floor(Math.random() * 6) + 1,
+                color: '#f44336'
+            });
+        }
+
+        // Roll Tech dice (Blue)
+        for (let i = 0; i < hero.stats.tech; i++) {
+            dice.push({
+                type: 'tech',
+                value: Math.floor(Math.random() * 6) + 1,
+                color: '#40c4ff'
+            });
+        }
+
+        return dice;
     }
 
     retreat() {
