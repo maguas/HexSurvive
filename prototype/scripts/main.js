@@ -39,7 +39,7 @@ function init() {
     document.getElementById('btn-fight').addEventListener('click', handleFight);
     document.getElementById('btn-retreat').addEventListener('click', handleRetreat);
 
-    log("🎮 SETUP: Click on any tile to place your initial Outpost.");
+    log(`🎮 MULTIPLAYER SETUP: ${game.activePlayer.name}, click on any tile to place your outpost.`);
 }
 
 function updateUI() {
@@ -59,9 +59,20 @@ function updateUI() {
     // Display setup phase more clearly
     let phaseText = game.phase;
     if (game.phase === 'setup') {
-        phaseText = setupOutpostTile ? 'Setup: Place Hero' : 'Setup: Place Outpost';
+        const step = game.setupStep;
+        const playerName = game.activePlayer.name;
+        if (step === 0) phaseText = `${playerName}: Place Outpost`;
+        else if (step === 1) phaseText = `${playerName}: Place Hero`;
+        else if (step === 2) phaseText = `${playerName}: Place Outpost`;
+        else if (step === 3) phaseText = `${playerName}: Place Hero`;
+    } else {
+        phaseText = `${game.activePlayer.name} - ${game.phase}`;
     }
-    document.getElementById('phase-display').textContent = phaseText;
+    const phaseDisplay = document.getElementById('phase-display');
+    if (phaseDisplay) {
+        phaseDisplay.textContent = phaseText;
+        phaseDisplay.style.color = game.activePlayer.color;
+    }
 
     // Threat Level
     document.getElementById('threat-value').textContent = `${game.threatLevel} (Track: ${game.threatTrack}/5)`;
@@ -198,24 +209,20 @@ function handleCanvasMouseMove(event) {
 
     // SETUP PHASE: Highlight tiles or edges based on step
     if (game.phase === 'setup') {
-        if (!setupOutpostTile) {
-            // Phase 1: Placing outpost - highlight tiles
+        const step = game.setupStep;
+
+        if (step === 0 || step === 2) {
+            // Placing outpost - highlight tiles
             const hex = grid.pixelToHex(mouseX, mouseY);
             hoveredTile = hex;
             hoveredEdge = null;
             grid.render(game.map, hoveredTile, heroLoc, null);
-        } else {
-            // Phase 2: Placing hero - highlight edges around outpost tile only
+        } else if (step === 1 || step === 3) {
+            // Placing hero - highlight edges
             const edgeData = grid.getClosestEdge(mouseX, mouseY);
-
-            if (edgeData.q === setupOutpostTile.q && edgeData.r === setupOutpostTile.r) {
-                hoveredEdge = edgeData;
-                hoveredTile = null;
-                grid.render(game.map, null, heroLoc, hoveredEdge);
-            } else {
-                hoveredEdge = null;
-                grid.render(game.map, null, heroLoc, null);
-            }
+            hoveredEdge = edgeData;
+            hoveredTile = null;
+            grid.render(game.map, null, heroLoc, hoveredEdge);
         }
         return;
     }
@@ -261,50 +268,39 @@ function handleCanvasClick(event) {
 
     // ===== SETUP PHASE =====
     if (game.phase === 'setup') {
-        if (!setupOutpostTile) {
-            // STEP 1: Place outpost on tile
+        const step = game.setupStep;
+
+        if (step === 0 || step === 2) {
+            // Place Outpost
             const hex = grid.pixelToHex(mouseX, mouseY);
-            const key = `${hex.q},${hex.r}`;
-            const tile = game.map.get(key);
+            const result = game.handleInitialPlacement(hex.q, hex.r, null);
 
-            if (!tile) {
-                log("❌ Invalid tile", 'warning');
-                return;
+            if (result.success) {
+                log(`🏠 ${game.activePlayer.name} placed an outpost!`, 'success');
+                updateUI();
+                grid.render(game.map);
+            } else {
+                log(`❌ ${result.reason}`, 'warning');
             }
-
-            // Place outpost
-            tile.outpost = true;
-            tile.revealed = true;
-            tile.numberToken = game.generateNumberToken();
-            game.victoryPoints++;
-            setupOutpostTile = { q: hex.q, r: hex.r };
-
-            log("🏠 Outpost placed! Now click on an edge around the outpost to place your Hero.", 'success');
-            updateUI();
-            grid.render(game.map, null, null, null);
-        } else {
-            // STEP 2: Place hero on edge
+        }
+        else if (step === 1 || step === 3) {
+            // Place Hero
             const edgeData = grid.getClosestEdge(mouseX, mouseY);
+            const result = game.handleInitialPlacement(edgeData.q, edgeData.r, edgeData.edgeIndex);
 
-            // Validate edge is on outpost tile
-            if (edgeData.q !== setupOutpostTile.q || edgeData.r !== setupOutpostTile.r) {
-                log("❌ Hero must be placed on an edge of the outpost tile", 'warning');
-                return;
+            if (result.success) {
+                if (result.step === 'switch_player') {
+                    log(`🦸 ${game.players[0].name}'s hero placed! Switching to ${game.activePlayer.name}...`, 'success');
+                } else if (result.step === 'setup_complete') {
+                    log(`🎉 Setup complete! ${game.activePlayer.name} goes first. Click 'Roll Dice'!`, 'success');
+                } else {
+                    log(`🦸 ${game.activePlayer.name}'s hero placed!`, 'success');
+                }
+                updateUI();
+                grid.render(game.map);
+            } else {
+                log(`❌ ${result.reason}`, 'warning');
             }
-
-            // Place hero
-            game.hero.location = { q: edgeData.q, r: edgeData.r, edgeIndex: edgeData.edgeIndex };
-
-            // Reveal adjacent tiles
-            game.revealAdjacentTiles(edgeData.q, edgeData.r, edgeData.edgeIndex);
-
-            // End setup
-            game.phase = 'production';
-            setupOutpostTile = null;
-
-            log("🦸 Hero placed! Click 'Roll Dice' to begin your turn.", 'success');
-            updateUI();
-            grid.render(game.map, null, game.hero.location, null);
         }
         return;
     }

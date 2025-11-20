@@ -3,40 +3,77 @@ import { EncounterManager } from './encounter_manager.js';
 export class GameManager {
     constructor() {
         this.encounterManager = new EncounterManager();
-        this.resources = {
-            scrap: 0,
-            fuel: 1,
-            food: 0,
-            alloy: 0,
-            intel: 0
-        };
+
+        // Multiplayer Setup
+        this.players = [
+            this.createPlayer(1, "Commander Red", "#f44336"),
+            this.createPlayer(2, "Commander Blue", "#2196f3")
+        ];
+        this.activePlayerIndex = 0;
+
         // ...
         this.threatLevel = 1;
         this.threatTrack = 0; // 0-5
         this.maxThreatTrack = 5;
         // ...
-        this.hero = {
-            location: null, // {q, r, edgeIndex}
-            stats: {
-                tactics: 1,
-                strength: 1,
-                tech: 1
-            },
-            health: 3,
-            xp: 0,
-            level: 1,
-            hand: [] // Cards tucked
-        };
+
         this.map = new Map();
         this.turn = 1;
-        this.phase = 'setup'; // Start in setup, will change to production after initial placement
-        this.victoryPoints = 0;
-        this.threatLevel = 1;
+        this.phase = 'setup';
+        this.setupStep = 0; // 0=P1 Outpost, 1=P1 Hero, 2=P2 Outpost, 3=P2 Hero
         this.alienPatrolLocation = null;
         this.currentEncounter = null;
 
         // Initialize map with HQ
         this.initMap();
+    }
+
+    createPlayer(id, name, color) {
+        return {
+            id,
+            name,
+            color,
+            resources: {
+                scrap: 0,
+                fuel: 1,
+                food: 0,
+                alloy: 0,
+                intel: 0
+            },
+            hero: {
+                location: null,
+                stats: {
+                    tactics: 1,
+                    strength: 1,
+                    tech: 1
+                },
+                health: 3,
+                xp: 0,
+                level: 1,
+                hand: []
+            },
+            victoryPoints: 0
+        };
+    }
+
+    get activePlayer() {
+        return this.players[this.activePlayerIndex];
+    }
+
+    get resources() {
+        return this.activePlayer.resources;
+    }
+
+    get hero() {
+        return this.activePlayer.hero;
+    }
+
+    get victoryPoints() {
+        return this.activePlayer.victoryPoints;
+    }
+
+    set victoryPoints(val) {
+        this.activePlayer.victoryPoints = val;
     }
 
     initMap() {
@@ -87,20 +124,54 @@ export class GameManager {
         const tile = this.map.get(key);
         if (!tile) return { success: false, reason: "Invalid tile" };
 
-        // Place Outpost
-        tile.outpost = true;
-        tile.revealed = true;
-        this.victoryPoints++; // +1 VP for Outpost
+        // Setup Steps:
+        // 0: P1 Outpost
+        // 1: P1 Hero
+        // 2: P2 Outpost
+        // 3: P2 Hero
 
-        // Place Hero
-        this.hero.location = { q, r, edgeIndex };
+        if (this.setupStep === 0 || this.setupStep === 2) {
+            // Place Outpost
+            if (tile.outpost) return { success: false, reason: "Tile already has an outpost" };
 
-        // Reveal adjacent via edge
-        this.revealAdjacentTiles(q, r, edgeIndex);
+            tile.outpost = true;
+            tile.ownerId = this.activePlayer.id; // Track ownership
+            tile.revealed = true;
 
-        // End setup
-        this.phase = 'production';
-        return { success: true };
+            // Generate number token if not barren and not already set
+            if (tile.type !== 'barren' && !tile.numberToken) {
+                tile.numberToken = this.generateNumberToken();
+            }
+
+            this.activePlayer.victoryPoints++;
+
+            this.setupStep++;
+            return { success: true, step: 'outpost_placed' };
+        }
+        else if (this.setupStep === 1 || this.setupStep === 3) {
+            // Place Hero
+            this.activePlayer.hero.location = { q, r, edgeIndex };
+            this.revealAdjacentTiles(q, r, edgeIndex);
+
+            this.setupStep++;
+
+            if (this.setupStep === 2) {
+                // Switch to Player 2
+                this.activePlayerIndex = 1;
+                return { success: true, step: 'switch_player' };
+            }
+
+            if (this.setupStep === 4) {
+                // End setup
+                this.activePlayerIndex = 0; // Back to P1
+                this.phase = 'production';
+                return { success: true, step: 'setup_complete' };
+            }
+
+            return { success: true, step: 'hero_placed' };
+        }
+
+        return { success: false };
     }
 
     getNeighbor(q, r, direction) {
@@ -754,14 +825,22 @@ export class GameManager {
             }
         }
 
-        this.turn++;
+        // Switch Player
+        this.activePlayerIndex = (this.activePlayerIndex + 1) % this.players.length;
+
+        // If back to Player 1, increment turn counter
+        if (this.activePlayerIndex === 0) {
+            this.turn++;
+        }
+
         this.phase = 'production';
 
         return {
             foodConsumed: foodNeeded <= this.resources.food ? foodNeeded : 0,
             foodNeeded: foodNeeded,
             heroReturned: heroReturned,
-            distance: distance
+            distance: distance,
+            nextPlayer: this.activePlayer.name
         };
     }
 }
