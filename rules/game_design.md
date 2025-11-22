@@ -51,12 +51,9 @@ Each turn has 3 phases:
      - Each Fortress: +2 Fuel, +2 Food
 - Roll 2d6.
 - **Sum 2-6, 8-12**: Any visible tile with this number produces 1 resource for players with an Outpost adjacent to it.
-- **Sum 7 (The Invasion)**: 
+- **Sum 7**: 
     - No production.
-    - **Alien Patrol**: 
-        - **Spawn/Move**: Active player chooses to **Add** a new Patrol (Max 2 on board) OR **Move** an existing one.
-        - **Effect**: Blocks production. Heroes on adjacent edges take 1 damage when moving.
-    - **Panic**: Players with >7 cards discard half.
+    - No other effects currently (placeholder for future threat mechanics)
 
 ## Resource Gathering
 
@@ -64,17 +61,13 @@ Each turn has 3 phases:
 - **Restriction**: Only tiles **adjacent to the hero** (the 2 tiles touching the hero's edge) can produce resources
 - **Standard Outpost**: Produces 1 resource per roll
 - **Fortress**: Produces 2 resources per roll
-- Tiles blocked by Alien Patrols do not produce.
 
 ### Phase 2: Action Phase
 Perform any number of actions:
 1. **Trade**: Exchange resources with players or the Bank (4:1 default).
-2. **Build/Recruit**:
-    - **Outpost** (1 Scrap, 1 Food, 1 Fuel): Place on a corner connected to your Hero's edge. (Limit: Distance rule applies).
+2. **Build**:
+    - **Outpost** (1 Scrap, 1 Food, 1 Fuel): Place on a tile adjacent to your Hero's location.
     - **Fortress** (2 Scrap, 3 Alloy): Upgrade Outpost. Double production.
-    - **Train Hero** (1 Food, 1 Intel): XP / Skill Up.
-    - **Craft Gear** (Cost varies): Equip your Hero.
-    - **Clean Nest** (2 Fuel, 2 Alloy): Remove Xeno-Nest. -1 Threat. Replace with random tile.
 ## Hero Movement & Exploration (Edge-Based)
 
 - Heroes occupy **edges** between hexes (not tile centers)
@@ -86,30 +79,32 @@ Perform any number of actions:
   - Valid moves: edges that share a vertex with current edge (4 possible moves) triggers a draw from the current **Threat Level Deck**.
         - **Types**: Resource Stash, Alien Tech, Hazard, Xeno-Nest, Alien Encounter.
         - **Rewards**: 
-            - **XP**: Gain 1 XP Cube per success.
-            - **Loot**: Tuck card under Hero to equip Gear/Skills (if applicable).
+            - **Equipment**: Defeated encounter card becomes equipment (tuck under hero card)
+            - **Resources**: Some encounters may grant bonus resources
 4. **Combat (Quick Resolution)**:
-    - **Dice Pool**: Roll Hero Dice (Stats + Gear).
-    - **Target**: Enemy has a **Defense Value** (e.g., 10) and **Required Slots** (e.g., 1x Red).
+    - **Dice Pool**: Roll Hero Dice (3 dice: Tactics/Strength/Tech) with modifiers from equipment.
+    - **Target**: Enemy has **Required Slots** with specific or "any" type requirements
     - **Resolution**: 
         - Assign dice to Slots first.
-        - Sum remaining dice. If Sum >= Defense, Enemy defeated.
-        - **Failure**: Hero takes 1 Injury AND **Threat Track increases by 1**. (Applies to Patrols too).
+        - If all slots covered, Enemy defeated.
+        - **Failure**: Hero returns to nearest Outpost and is **Inactive for 2 turns**. **Threat Track increases by 1**.
     - **Co-op Assist**:
         - Another player adjacent to the encounter can join.
         - Combine Dice Pools.
-        - **Rewards**: XP is shared. Loot/Resources are split (Roll d6: High roll picks first).
-    - **Death**: If Health reaches 0, Hero respawns at nearest Outpost and is **Inactive** for 1 turn.
+        - **Rewards**: Loot/Resources are split (Roll d6: High roll picks first).
+    - **Defeat**: If defeated, hero immediately returns to nearest owned outpost and cannot act for 2 full turns.
     - **Fast Paced**: No multi-round combat. One roll, one result.
 
 ## 6. The Hero
 Each player controls **exactly one unique Commander**. 
-- **Health**: Represented by **Cards face-down** under the Hero (like *Bang!* bullets). Lose health = move the card down behind the hero card to display one less "life point"
-- **Progression (XP)**: 
-    - Gain **XP Cubes** from encounters.
-    - **Level Up**: Every **3 XP Cubes** = +1 Combat Die (Permanent).
-    - **Cap**: Max **9 XP Cubes** (+3 Dice total).
-- **Gear Slots**: Head, Body, Weapon, Tech.
+- **Health**: 3 health points (tracked on player board)
+- **Progression (Equipment-Based)**: 
+    - Heroes start with base stats: 1 Tactics, 1 Strength, 1 Tech
+    - **No XP or leveling system**
+    - Heroes grow stronger ONLY by equipping items from defeated encounters
+    - Encounter cards are tucked under hero card, showing equipment bonuses on left side
+    - Maximum 4 equipment slots: Head, Body, Weapon, Tech
+- **Combat Dice**: Always roll 3 dice (1 yellow, 1 red, 1 blue) + apply equipment modifiers
 - **Stats**:
     - **Tactics (Yellow)**: Ranged attacks, flanking.
     - **Strength (Red)**: Heavy weapons, armor breaking.
