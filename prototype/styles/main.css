@@ -171,6 +171,31 @@ aside {
     cursor: not-allowed;
 }
 
+.action-btn:disabled .btn-cost {
+    color: var(--accent-red);
+}
+
+/* Button Cost Display */
+.btn-label {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.btn-cost {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+
+.cost-item {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 /* BOARD AREA */
 #board-area {
     position: relative;
@@ -405,4 +430,156 @@ aside {
 
 ::-webkit-scrollbar-thumb:hover {
     background: #e68900;
+}
+
+/* ENHANCED COMBAT UI */
+.enemy-slots-container {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 15px 0;
+}
+
+.enemy-slot {
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 80px;
+}
+
+.slot-icon {
+    font-size: 1.5rem;
+    margin-bottom: 5px;
+}
+
+.slot-label {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+}
+
+.slot-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
+.enemy-slots-title {
+    font-weight: bold;
+    color: var(--accent-orange);
+    margin-top: 10px;
+}
+
+.enemy-level {
+    display: inline-block;
+    background: var(--accent-purple);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+}
+
+.enemy-desc {
+    font-style: italic;
+    color: var(--text-dim);
+    margin: 10px 0;
+}
+
+.enemy-reward {
+    margin-top: 15px;
+    padding: 10px;
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid var(--accent-green);
+    border-radius: 6px;
+    text-align: center;
+    color: var(--accent-green);
+}
+
+.dice-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.dice-container.rolling {
+    animation: shake 0.5s;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px) rotate(-5deg); }
+    75% { transform: translateX(5px) rotate(5deg); }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.combat-hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin-top: 10px;
+    font-style: italic;
+}
+
+.combat-resolving {
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--accent-yellow);
+    animation: pulse 1s infinite;
+}
+
+.combat-result-details {
+    text-align: center;
+    padding: 15px;
+    font-size: 1.1rem;
+}
+
+.reward-display {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(76, 175, 80, 0.1);
+    border: 2px solid var(--accent-green);
+    border-radius: 10px;
+    text-align: center;
+}
+
+.reward-display h3 {
+    color: var(--accent-green);
+    margin-bottom: 15px;
+}
+
+.xp-cube {
+    font-size: 1.5rem;
+    padding: 15px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #000;
+    border-radius: 8px;
+    font-weight: bold;
+    display: inline-block;
+    margin: 10px 0;
+}
+
+.loot-item {
+    padding: 15px;
+    background: rgba(156, 39, 176, 0.2);
+    border: 2px solid var(--accent-purple);
+    border-radius: 8px;
+    margin: 10px 0;
+}
+
+.item-name {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--accent-purple);
+    margin-bottom: 8px;
+}
+
+.item-bonus {
+    font-size: 1rem;
+    color: var(--accent-green);
 }

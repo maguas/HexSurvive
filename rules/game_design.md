@@ -81,6 +81,7 @@ Perform any number of actions:
 - **Move** (Costs 2 Fuel): Move hero to an adjacent edge
   - Only clickable during Action Phase
   - Moving to a new edge reveals both adjacent tiles and assigns number tokens
+  - **Exploration Reward**: Gain 1 resource of each newly revealed tile's type immediately
   - Draws an encounter card from the current Threat Level deck for each newly revealed tile
   - Valid moves: edges that share a vertex with current edge (4 possible moves) triggers a draw from the current **Threat Level Deck**.
         - **Types**: Resource Stash, Alien Tech, Hazard, Xeno-Nest, Alien Encounter.

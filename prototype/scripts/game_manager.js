@@ -143,32 +143,41 @@ export class GameManager {
                 tile.numberToken = this.generateNumberToken();
             }
 
+            // Grant 1 resource of the tile type to the active player
+            const resourceType = this.getTileResourceType(tile.type);
+            const resourcesGained = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
+            if (resourceType) {
+                console.log(`💰 ${this.activePlayer.name} placed outpost on ${tile.type} - gaining 1 ${resourceType}`);
+                this.activePlayer.resources[resourceType] += 1;
+                resourcesGained[resourceType] = 1;
+            }
+
             this.activePlayer.victoryPoints++;
 
             this.setupStep++;
-            return { success: true, step: 'outpost_placed' };
+            return { success: true, step: 'outpost_placed', resourcesGained: resourcesGained };
         }
         else if (this.setupStep === 1 || this.setupStep === 3) {
             // Place Hero
             this.activePlayer.hero.location = { q, r, edgeIndex };
-            this.revealAdjacentTiles(q, r, edgeIndex);
+            const revealResult = this.revealAdjacentTiles(q, r, edgeIndex);
 
             this.setupStep++;
 
             if (this.setupStep === 2) {
                 // Switch to Player 2
                 this.activePlayerIndex = 1;
-                return { success: true, step: 'switch_player' };
+                return { success: true, step: 'switch_player', resourcesGained: revealResult.resourcesGained };
             }
 
             if (this.setupStep === 4) {
                 // End setup
                 this.activePlayerIndex = 0; // Back to P1
                 this.phase = 'production';
-                return { success: true, step: 'setup_complete' };
+                return { success: true, step: 'setup_complete', resourcesGained: revealResult.resourcesGained };
             }
 
-            return { success: true, step: 'hero_placed' };
+            return { success: true, step: 'hero_placed', resourcesGained: revealResult.resourcesGained };
         }
 
         return { success: false };
@@ -256,17 +265,28 @@ export class GameManager {
 
     revealAdjacentTiles(q, r, edgeIndex) {
         const newlyRevealed = [];
+        const resourcesGained = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
 
         // Check current tile
         const key1 = `${q},${r}`;
         if (this.map.has(key1)) {
             const tile = this.map.get(key1);
+            
+            // Always grant resource if tile is revealed (even if already revealed)
+            const resourceType = this.getTileResourceType(tile.type);
+            if (resourceType && tile.revealed) {
+                console.log(`💰 ${this.activePlayer.name} adjacent to revealed ${tile.type} - gaining 1 ${resourceType}`);
+                this.activePlayer.resources[resourceType] += 1;
+                resourcesGained[resourceType] += 1;
+            }
+            
+            // If not yet revealed, reveal it and give token
             if (!tile.revealed) {
                 tile.revealed = true;
-                // Only assign number tokens to non-barren tiles
                 if (tile.type !== 'barren') {
                     tile.numberToken = this.generateNumberToken();
                 }
+                console.log(`📍 Revealed tile at (${q}, ${r}): ${tile.type} with token ${tile.numberToken}`);
                 newlyRevealed.push(tile);
             }
         }
@@ -276,17 +296,28 @@ export class GameManager {
         const key2 = `${n.q},${n.r}`;
         if (this.map.has(key2)) {
             const tile = this.map.get(key2);
+            
+            // Always grant resource if tile is revealed (even if already revealed)
+            const resourceType = this.getTileResourceType(tile.type);
+            if (resourceType && tile.revealed) {
+                console.log(`💰 ${this.activePlayer.name} adjacent to revealed ${tile.type} - gaining 1 ${resourceType}`);
+                this.activePlayer.resources[resourceType] += 1;
+                resourcesGained[resourceType] += 1;
+            }
+            
+            // If not yet revealed, reveal it and give token
             if (!tile.revealed) {
                 tile.revealed = true;
-                // Only assign number tokens to non-barren tiles
                 if (tile.type !== 'barren') {
                     tile.numberToken = this.generateNumberToken();
                 }
+                console.log(`📍 Revealed neighbor at (${n.q}, ${n.r}): ${tile.type} with token ${tile.numberToken}`);
                 newlyRevealed.push(tile);
             }
         }
 
-        return newlyRevealed;
+        console.log(`🔍 Total newly revealed tiles: ${newlyRevealed.length}, resources gained:`, resourcesGained);
+        return { newlyRevealed, resourcesGained };
     }
 
     moveHero(q, r, edgeIndex) {
@@ -314,7 +345,9 @@ export class GameManager {
         this.hero.location = { q, r, edgeIndex };
 
         // Reveal adjacent tiles and check for encounters
-        const newTiles = this.revealAdjacentTiles(q, r, edgeIndex);
+        const revealResult = this.revealAdjacentTiles(q, r, edgeIndex);
+        const newTiles = revealResult.newlyRevealed;
+        const resourcesGained = revealResult.resourcesGained;
         const encounters = [];
 
         for (const tile of newTiles) {
@@ -328,7 +361,12 @@ export class GameManager {
             // Or return all.
         }
 
-        return { success: true, encounters: encounters, movedToOutpost: movingToOutpost };
+        return { 
+            success: true, 
+            encounters: encounters, 
+            movedToOutpost: movingToOutpost,
+            resourcesGained: resourcesGained
+        };
     }
 
     increaseThreat() {
@@ -432,71 +470,73 @@ export class GameManager {
     }
 
     harvest(rollValue) {
-        let gains = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
-
         if (rollValue === 7) {
             return null; // Invasion event
         }
 
         console.log(`🎲 Harvest roll: ${rollValue}`);
 
-        // Get tiles adjacent to hero
-        const heroAdjacentTiles = [];
-        if (this.hero.location) {
-            const heroQ = this.hero.location.q;
-            const heroR = this.hero.location.r;
-            const heroEdge = this.hero.location.edgeIndex;
+        // Track gains per player
+        const playerGains = {};
+        this.players.forEach(player => {
+            playerGains[player.id] = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
+        });
 
-            // Add the tile the hero's edge is on
-            heroAdjacentTiles.push({ q: heroQ, r: heroR });
+        // For each player, get their hero-adjacent tiles
+        const playerAdjacentTiles = {};
+        this.players.forEach(player => {
+            playerAdjacentTiles[player.id] = [];
+            if (player.hero.location) {
+                const heroQ = player.hero.location.q;
+                const heroR = player.hero.location.r;
+                const heroEdge = player.hero.location.edgeIndex;
 
-            // Add the neighbor tile across the edge
-            const neighbor = this.getNeighbor(heroQ, heroR, heroEdge);
-            heroAdjacentTiles.push({ q: neighbor.q, r: neighbor.r });
+                // Add the tile the hero's edge is on
+                playerAdjacentTiles[player.id].push({ q: heroQ, r: heroR });
 
-            console.log(`Hero at (${heroQ}, ${heroR}) edge ${heroEdge}`);
-            console.log(`Hero-adjacent tiles:`, heroAdjacentTiles);
-        }
+                // Add the neighbor tile across the edge
+                const neighbor = this.getNeighbor(heroQ, heroR, heroEdge);
+                playerAdjacentTiles[player.id].push({ q: neighbor.q, r: neighbor.r });
+            }
+        });
 
         // Check ALL tiles on the map
         this.map.forEach((tile) => {
             if (tile.revealed && tile.numberToken === rollValue && !tile.alienPatrol) {
-                const isHeroAdjacent = heroAdjacentTiles.some(ht => ht.q === tile.q && ht.r === tile.r);
-                const hasOutpost = tile.outpost;
+                
+                // Check each player for production
+                this.players.forEach(player => {
+                    const isHeroAdjacent = playerAdjacentTiles[player.id].some(
+                        ht => ht.q === tile.q && ht.r === tile.r
+                    );
+                    const hasOutpost = tile.outpost && tile.ownerId === player.id;
 
-                // Produce if either: hero is adjacent OR tile has outpost
-                if (isHeroAdjacent || hasOutpost) {
-                    const amount = tile.fortress ? 2 : 1;
-                    const source = hasOutpost ? (isHeroAdjacent ? "outpost+hero" : "outpost") : "hero";
-                    console.log(`✅ Producing ${amount} ${tile.type} from (${tile.q}, ${tile.r}) [${source}]`);
-
-                    switch (tile.type) {
-                        case 'ruins':
-                            gains.scrap += amount;
-                            this.resources.scrap += amount;
-                            break;
-                        case 'wasteland':
-                            gains.fuel += amount;
-                            this.resources.fuel += amount;
-                            break;
-                        case 'overgrown':
-                            gains.food += amount;
-                            this.resources.food += amount;
-                            break;
-                        case 'crash_site':
-                            gains.alloy += amount;
-                            this.resources.alloy += amount;
-                            break;
-                        case 'bunker':
-                            gains.intel += amount;
-                            this.resources.intel += amount;
-                            break;
+                    // Produce if either: hero is adjacent OR player owns the outpost
+                    if (isHeroAdjacent || hasOutpost) {
+                        const amount = tile.fortress ? 2 : 1;
+                        const resourceType = this.getTileResourceType(tile.type);
+                        
+                        if (resourceType) {
+                            playerGains[player.id][resourceType] += amount;
+                            player.resources[resourceType] += amount;
+                        }
                     }
-                }
+                });
             }
         });
 
-        return gains;
+        return playerGains;
+    }
+
+    getTileResourceType(tileType) {
+        const mapping = {
+            'ruins': 'scrap',
+            'wasteland': 'fuel',
+            'overgrown': 'food',
+            'crash_site': 'alloy',
+            'bunker': 'intel'
+        };
+        return mapping[tileType] || null;
     }
 
     explore(q, r) {

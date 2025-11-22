@@ -198,27 +198,27 @@ export class HexGrid {
         return { q: hex.q, r: hex.r, edgeIndex: closestEdge };
     }
 
-    drawHero(q, r, edgeIndex) {
+    drawHero(q, r, edgeIndex, playerColor = "#00ffff", playerName = "H") {
         const pos = this.getEdgeMidpoint(q, r, edgeIndex);
         const ctx = this.ctx;
 
-        ctx.fillStyle = "#00ffff";
-        ctx.shadowColor = "#00ffff";
+        ctx.fillStyle = playerColor;
+        ctx.shadowColor = playerColor;
         ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 8, 0, 2 * Math.PI);
+        ctx.arc(pos.x, pos.y, 10, 0, 2 * Math.PI);
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Draw "Hero" text or icon
-        ctx.fillStyle = "#000";
+        // Draw player initial
+        ctx.fillStyle = "#fff";
         ctx.font = "bold 10px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("H", pos.x, pos.y);
+        ctx.fillText(playerName[0], pos.x, pos.y);
     }
 
     drawEdgeHighlight(q, r, edgeIndex, color = "rgba(255, 255, 255, 0.5)") {
@@ -241,7 +241,7 @@ export class HexGrid {
         ctx.stroke();
     }
 
-    render(mapData, selectedHex = null, heroLocation = null, hoveredEdge = null) {
+    render(mapData, selectedHex = null, players = null, hoveredEdge = null) {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         mapData.forEach((tile, key) => {
@@ -254,8 +254,14 @@ export class HexGrid {
             this.drawEdgeHighlight(hoveredEdge.q, hoveredEdge.r, hoveredEdge.edgeIndex);
         }
 
-        if (heroLocation) {
-            this.drawHero(heroLocation.q, heroLocation.r, heroLocation.edgeIndex);
+        // Draw all players' heroes
+        if (players) {
+            players.forEach(player => {
+                if (player.hero.location) {
+                    const loc = player.hero.location;
+                    this.drawHero(loc.q, loc.r, loc.edgeIndex, player.color, player.name);
+                }
+            });
         }
     }
 
