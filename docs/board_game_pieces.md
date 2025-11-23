@@ -14,9 +14,10 @@
 - **Material**: Thick cardboard (2mm+) with full-color printing
 - **Design**: 
   - Double-sided preferred (different layouts for variety)
+  - **Back side displays Encounter Level (1, 2, or 3)** so players can strategize where to place outposts/explore
   - Numbers printed on tiles (not separate tokens)
   - Clear terrain type iconography
-  - Dark/foggy appearance for unrevealed side
+  - Dark/foggy appearance for unrevealed side with level indicator badge
 
 ### Tile Type Distribution (37 tiles total)
 Based on balanced resource generation:
@@ -129,6 +130,7 @@ Based on Catan-style resource economy for 4-player game:
   - Hero stat tracking (Tactics, Strength, Tech) - base stats only, modifiers from equipment
   - Health tracker (3 health points)
   - Inactive turns tracker (0-2 turns when defeated)
+  - **Death tally track (0-3 skull icons)**: eliminate player after 3 defeats
   - Victory Point tracker (0-10)
   - **Equipment card tuck zones**: Designated areas on sides/bottom where defeated encounter cards can be tucked to show equipment bonuses
   - Equipment slot indicators: Head, Body, Weapon, Tech (for card placement)
@@ -166,6 +168,12 @@ Based on Catan-style resource economy for 4-player game:
 - **Color-coded**: Matching player colors
 - **Design**: "Inactive" or crossed-out hero icon with turn counter (1-2)
 - **Use**: Placed on player board when hero is defeated, tracking 2 inactive turns
+
+### Death Tracker Clips (4 pieces - 1 per player)
+- **Material**: Plastic clip or wooden slider
+- **Size**: Sized to fit death tally track on player board
+- **Design**: Skull icon clip that moves across 0-3 defeats
+- **Use**: Advances each time a hero dies; eliminate player after third defeat
 
 ---
 
@@ -289,6 +297,7 @@ Based on Catan-style resource economy for 4-player game:
 | **Threat Marker** | 1 | Wooden |
 | **Turn Counter** | 1 | Wooden |
 | **Inactive Hero Markers** | 4 | Cardboard |
+| **Death Tracker Clips** | 4 | Plastic/Wood |
 | **Encounter Cards** | 60-90 | Card stock (dual-purpose) |
 | **Hero Cards** | 4 | Card stock |
 | **Reference Cards** | 4 | Card stock |

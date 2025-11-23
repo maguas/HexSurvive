@@ -73,6 +73,31 @@ export class HexGrid {
             // Fog pattern
             ctx.fillStyle = "rgba(50, 50, 50, 0.5)";
             ctx.fill();
+            
+            // Draw encounter level badge on unrevealed tiles
+            if (tileData.encounterLevel) {
+                const levelColors = {
+                    1: "#4CAF50",  // Green - Easy
+                    2: "#FFC107",  // Yellow - Medium
+                    3: "#F44336"   // Red - Hard
+                };
+                
+                // Draw badge circle
+                ctx.fillStyle = levelColors[tileData.encounterLevel] || "#888";
+                ctx.beginPath();
+                ctx.arc(x, y, 15, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.strokeStyle = "#000";
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw level number
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 16px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(tileData.encounterLevel, x, y);
+            }
         } else {
             // Revealed tile
             ctx.fillStyle = this.getTileColor(tileData.type);
@@ -113,14 +138,6 @@ export class HexGrid {
             ctx.stroke();
         }
 
-        // Draw alien patrol if present
-        if (tileData.alienPatrol) {
-            ctx.fillStyle = "#ff0000";
-            ctx.font = "bold 20px Arial";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("👽", x, y - 25);
-        }
     }
 
     drawTileInfo(x, y, tileData) {

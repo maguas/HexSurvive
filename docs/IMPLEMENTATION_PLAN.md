@@ -21,7 +21,33 @@
 
 ## Implementation Steps
 
-### Phase 1: Code Cleanup (Remove Features)
+### Phase 1: Map & Data Updates
+
+#### 1.1 Tile Encounter Level Visibility
+
+**Goal:** Each tile's unrevealed side indicates encounter level (1/2/3).
+
+**Files:**
+- `c:\Github_Maguas\HexSurvive\prototype\scripts\game_manager.js`
+- `c:\Github_Maguas\HexSurvive\prototype\scripts\hex_grid.js`
+- Tile data JSON (if any)
+
+**Implementation:**
+1. Add `encounterLevel` property to tile definitions (values 1-3)
+2. Ensure `initMap()` sets encounter levels when generating map
+3. Update `hex_grid.js` to draw level badge on unrevealed tiles
+4. Update `grid.render()` hover tooltip/log to mention level when tile unrevealed
+
+**UI:**
+- Add legend explaining level colors/icons in sidebar or tooltips
+
+**Testing:**
+- Verify each tile retains encounter level after reveal (for logging only)
+- Confirm hidden tiles show level indicator
+
+---
+
+### Phase 2: Code Cleanup (Remove Features)
 
 #### 1.1 Remove XP System from `game_manager.js`
 
@@ -102,7 +128,7 @@ harvest(rollValue) {
 
 ---
 
-### Phase 2: Update Combat System
+### Phase 3: Update Combat & Elimination System
 
 #### 2.1 Remove XP from Combat Rewards
 
@@ -207,7 +233,29 @@ function handleCombatDefeat(result) {
 }
 ```
 
-#### 2.3 Block Actions for Inactive Heroes
+#### 3.3 Implement Player Elimination After 3 Deaths
+
+**Files:**
+- `game_manager.js`
+- `main.js`
+
+**Steps:**
+1. Add `deathCount` to player object (initialize 0)
+2. In `defeatHero()`, increment `deathCount`
+3. If `deathCount >= 3`, mark player as eliminated:
+   - Remove their hero from board (e.g., `hero.location = null`)
+   - Disable their turn (skip in `endTurn()` by advancing until hitting non-eliminated player)
+   - Remove their outposts? (decision: keep as abandoned but producible?) Document behaviour
+4. Update UI to show elimination status (log + player panel)
+5. If only one player remains, declare victory
+
+**Testing:**
+- Add unit test to simulate 3 defeats and ensure elimination
+- Verify turns skip eliminated player
+
+---
+
+### Phase 4: Equipment System Integration (Future)
 
 **File:** `c:\Github_Maguas\HexSurvive\prototype\scripts\main.js`
 
@@ -285,7 +333,7 @@ function rollCombatDice(player) {
 
 ---
 
-### Phase 4: UI Updates
+### Phase 5: UI Updates
 
 #### 4.1 Update Player Board Display
 
@@ -371,7 +419,7 @@ function showRewardUI(reward) {
 
 ---
 
-### Phase 5: Testing Updates
+### Phase 6: Testing Updates
 
 #### 5.1 Update Test Files
 

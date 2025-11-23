@@ -21,7 +21,6 @@ export class GameManager {
         this.turn = 1;
         this.phase = 'setup';
         this.setupStep = 0; // 0=P1 Outpost, 1=P1 Hero, 2=P2 Outpost, 3=P2 Hero
-        this.alienPatrolLocation = null;
         this.currentEncounter = null;
 
         // Initialize map with HQ
@@ -48,11 +47,12 @@ export class GameManager {
                     tech: 1
                 },
                 health: 3,
-                xp: 0,
-                level: 1,
-                hand: []
+                inactiveTurns: 0,  // Tracks turns hero is inactive after defeat
+                deathCount: 0,      // Tracks total defeats (eliminate at 3)
+                hand: []            // Equipped items
             },
-            victoryPoints: 0
+            victoryPoints: 0,
+            eliminated: false       // Player eliminated after 3 defeats
         };
     }
 
@@ -102,6 +102,13 @@ export class GameManager {
                 const type = tileTypes[typeIndex % tileTypes.length];
                 typeIndex++;
 
+                const distanceFromCenter = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
+                
+                // Assign encounter level based on distance from center
+                let encounterLevel = 1;
+                if (distanceFromCenter >= 3) encounterLevel = 3;
+                else if (distanceFromCenter >= 2) encounterLevel = 2;
+                
                 this.map.set(`${q},${r}`, {
                     type: type,
                     revealed: false, // All start hidden
@@ -109,7 +116,8 @@ export class GameManager {
                     r: r,
                     numberToken: null,
                     outpost: false,
-                    level: Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r)) // Distance from center
+                    encounterLevel: encounterLevel, // 1, 2, or 3 based on distance
+                    level: distanceFromCenter // Distance from center (keep for compatibility)
                 });
             }
         }
@@ -423,44 +431,90 @@ export class GameManager {
     respawnHero() {
         // Logic to move hero to nearest outpost and set inactive
         // For prototype, just reset health and move to HQ
-        this.hero.health = 3;
-        this.hero.location = { q: 0, r: 0, edgeIndex: 0 };
-        // Inactive logic to be added
     }
 
-    moveAlienPatrol(q, r) {
-        const key = `${q},${r}`;
-        const tile = this.map.get(key);
-
-        if (!tile || !tile.revealed) {
-            return { success: false, reason: "Can only move patrol to revealed tiles" };
+    defeatHero(playerId) {
+        const player = this.players.find(p => p.id === playerId);
+        if (!player) return;
+        
+        // Increment death count
+        player.hero.deathCount++;
+        
+        // Check for elimination (3 deaths)
+        if (player.hero.deathCount >= 3) {
+            player.eliminated = true;
+            player.hero.location = null; // Remove from board
+            console.log(`💀 ${player.name} has been eliminated after 3 defeats!`);
+            
+            // Check if only one player remains
+            const remainingPlayers = this.players.filter(p => !p.eliminated);
+            if (remainingPlayers.length === 1) {
+                console.log(`🏆 ${remainingPlayers[0].name} wins by elimination!`);
+                return { eliminated: true, winner: remainingPlayers[0] };
+            }
+            
+            return { eliminated: true, winner: null };
         }
-
-        // Remove from old location
-        if (this.alienPatrolLocation) {
-            const oldKey = this.alienPatrolLocation;
-            const oldTile = this.map.get(oldKey);
-            if (oldTile) oldTile.alienPatrol = false;
+        
+        // Find nearest owned outpost
+        const nearestOutpost = this.findNearestOutpost(player);
+        
+        if (nearestOutpost) {
+            // Respawn at nearest outpost edge (pick any edge)
+            player.hero.location = {
+                q: nearestOutpost.q,
+                r: nearestOutpost.r,
+                edgeIndex: 0  // Default edge
+            };
+        } else {
+            // No outposts - respawn at center
+            player.hero.location = {
+                q: 0,
+                r: 0,
+                edgeIndex: 0
+            };
         }
-
-        // Set new location
-        tile.alienPatrol = true;
-        this.alienPatrolLocation = key;
-
-        return { success: true };
+        
+        // Mark as inactive for 2 turns
+        player.hero.inactiveTurns = 2;
+        
+        // Increase threat
+        this.threatTrack++;
+        if (this.threatTrack >= 5) {
+            this.threatLevel++;
+            this.threatTrack = 0;
+        }
+        
+        return { eliminated: false, deathCount: player.hero.deathCount };
     }
 
-    randomTileType() {
-        const types = ['ruins', 'wasteland', 'overgrown', 'crash_site', 'desert', 'bunker'];
-        const weights = [25, 20, 20, 15, 15, 5]; // Percentage weights
-        const totalWeight = weights.reduce((a, b) => a + b, 0);
-        let random = Math.random() * totalWeight;
-
-        for (let i = 0; i < types.length; i++) {
-            if (random < weights[i]) return types[i];
-            random -= weights[i];
+    findNearestOutpost(player) {
+        let nearest = null;
+        let minDistance = Infinity;
+        
+        if (!player.hero.location) return null;
+        
+        for (const [key, tile] of this.map) {
+            if (tile.outpost && tile.ownerId === player.id) {
+                const distance = this.calculateDistance(
+                    player.hero.location.q,
+                    player.hero.location.r,
+                    tile.q,
+                    tile.r
+                );
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = tile;
+                }
+            }
         }
-        return 'desert';
+        
+        return nearest;
+    }
+
+    calculateDistance(q1, r1, q2, r2) {
+        // Hex distance formula
+        return (Math.abs(q1 - q2) + Math.abs(r1 - r2) + Math.abs((q1 + r1) - (q2 + r2))) / 2;
     }
 
     rollDice() {
@@ -502,7 +556,7 @@ export class GameManager {
 
         // Check ALL tiles on the map
         this.map.forEach((tile) => {
-            if (tile.revealed && tile.numberToken === rollValue && !tile.alienPatrol) {
+            if (tile.revealed && tile.numberToken === rollValue) {
                 
                 // Check each player for production
                 this.players.forEach(player => {
@@ -665,11 +719,29 @@ export class GameManager {
             tech: ['Scanner', 'Med Kit', 'EMP Device']
         };
 
-        return {
+        const item = {
             slot: slot,
-            name: names[slot][Math.floor(Math.random() * names[slot].length)],
-            bonus: level + 1
+            name: names[slot][Math.floor(Math.random() * names[slot].length)]
         };
+        
+        const bonus = level + 1;
+        
+        // Assign stats based on slot
+        if (slot === 'head') item.tactics = bonus;
+        if (slot === 'body') item.strength = bonus;
+        if (slot === 'weapon') item.strength = Math.ceil(bonus / 2); // Weapons give less raw str but maybe tactic? Let's just say Str for now or mixed.
+        // Actually, let's keep it simple:
+        if (slot === 'weapon') item.tactics = bonus; // Aiming?
+        if (slot === 'tech') item.tech = bonus;
+        
+        // Override for weapon to be Strength to match "Combat" feel or keep Tactics?
+        // Let's make Weapon = Strength to help with killing stuff.
+        if (slot === 'weapon') {
+             delete item.tactics;
+             item.strength = bonus;
+        }
+
+        return item;
     }
 
     buildOutpost(q, r) {
@@ -684,14 +756,16 @@ export class GameManager {
             return { success: false, reason: "Outpost already exists here" };
         }
 
-        if (this.resources.scrap < 1 || this.resources.food < 1 || this.resources.fuel < 1) {
-            return { success: false, reason: "Not enough resources (need 1 Scrap, 1 Food, 1 Fuel)" };
+        if (this.resources.scrap < 1 || this.resources.food < 1 || this.resources.fuel < 1 || this.resources.alloy < 1 || this.resources.intel < 1) {
+            return { success: false, reason: "Not enough resources (need 1 of each: Scrap, Food, Fuel, Alloy, Intel)" };
         }
 
         // Pay costs
         this.resources.scrap--;
         this.resources.food--;
         this.resources.fuel--;
+        this.resources.alloy--;
+        this.resources.intel--;
 
         tile.outpost = true;
         this.victoryPoints++;
@@ -726,39 +800,6 @@ export class GameManager {
         return { success: true };
     }
 
-    trainHero() {
-        if (this.resources.food < 1 || this.resources.intel < 1) {
-            return { success: false, reason: "Not enough resources (need 1 Food, 1 Intel)" };
-        }
-
-        this.resources.food--;
-        this.resources.intel--;
-
-        const xpGain = 5;
-        this.playerHero.xp += xpGain;
-
-        if (this.playerHero.xp >= this.playerHero.xpToNext) {
-            this.levelUpHero();
-            return { success: true, levelUp: true };
-        }
-
-        return { success: true, xpGain, levelUp: false };
-    }
-
-    levelUpHero() {
-        this.playerHero.level++;
-        this.playerHero.xp = 0;
-        this.playerHero.xpToNext = Math.floor(this.playerHero.xpToNext * 1.5);
-
-        // Increase random stat
-        const stats = ['tac', 'str', 'tech'];
-        const statToIncrease = stats[Math.floor(Math.random() * stats.length)];
-        this.playerHero.stats[statToIncrease]++;
-
-        this.playerHero.maxHealth += 2;
-        this.playerHero.health = this.playerHero.maxHealth;
-    }
-
     handleInvasion() {
         this.threatLevel++;
 
@@ -774,7 +815,7 @@ export class GameManager {
             }
         }
 
-        return { discarded, threatLevel: this.threatLevel, needsPatrolMove: true };
+        return { discarded, threatLevel: this.threatLevel };
     }
 
     addNeighbors(q, r) {
@@ -795,8 +836,7 @@ export class GameManager {
                     numberToken: null,
                     level: null,
                     outpost: false,
-                    fortress: false,
-                    alienPatrol: false
+                    fortress: false
                 });
             }
         });
@@ -846,6 +886,11 @@ export class GameManager {
     }
 
     endTurn() {
+        // Decrement inactive turns for current player
+        if (this.activePlayer.hero.inactiveTurns > 0) {
+            this.activePlayer.hero.inactiveTurns--;
+        }
+        
         // Calculate food consumption based on distance to nearest outpost
         const distance = this.getDistanceToNearestOutpost();
         const foodNeeded = distance;
@@ -865,13 +910,45 @@ export class GameManager {
             }
         }
 
-        // Switch Player
-        this.activePlayerIndex = (this.activePlayerIndex + 1) % this.players.length;
+        // Passive income for all players (only if hero is at outpost)
+        this.players.forEach(player => {
+            let fuelGain = 0;
+            let foodGain = 0;
+            
+            this.map.forEach(tile => {
+                if (tile.outpost && tile.ownerId === player.id) {
+                    // Check if hero is located at this tile (any edge)
+                    const heroLoc = player.hero.location;
+                    if (heroLoc && heroLoc.q === tile.q && heroLoc.r === tile.r) {
+                        if (tile.fortress) {
+                            fuelGain += 2;
+                            foodGain += 2;
+                        } else {
+                            fuelGain += 1;
+                            foodGain += 1;
+                        }
+                    }
+                }
+            });
+            
+            player.resources.fuel += fuelGain;
+            player.resources.food += foodGain;
+        });
 
-        // If back to Player 1, increment turn counter
-        if (this.activePlayerIndex === 0) {
-            this.turn++;
-        }
+        // Switch Player - skip eliminated players
+        let attempts = 0;
+        do {
+            this.activePlayerIndex = (this.activePlayerIndex + 1) % this.players.length;
+            attempts++;
+            
+            // If back to Player 1, increment turn counter
+            if (this.activePlayerIndex === 0) {
+                this.turn++;
+            }
+            
+            // Safety check to avoid infinite loop
+            if (attempts > this.players.length) break;
+        } while (this.activePlayer.eliminated);
 
         this.phase = 'production';
 

@@ -59,20 +59,7 @@ game.harvest(10);
 if (game.activePlayer.resources.intel !== 2) throw new Error(`Expected 2 intel from fortress, got ${game.activePlayer.resources.intel}`);
 console.log("✅ Fortress produces 2x resources");
 
-// Test 4: Alien Patrol Blocks Production
-console.log("\nTest 4: Alien Patrol Blocks Production");
-game.map.clear();
-game.map.set("0,0", {
-    q: 0, r: 0, type: 'ruins', revealed: true, numberToken: 9, outpost: true, fortress: false, alienPatrol: true
-});
-
-game.activePlayer.resources = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
-
-game.harvest(9);
-if (game.activePlayer.resources.scrap !== 0) throw new Error(`Expected 0 scrap (blocked by patrol), got ${game.activePlayer.resources.scrap}`);
-console.log("✅ Alien Patrol blocks production");
-
-// Test 5: Multiple Tiles Same Number
+// Test 4: Multiple Tiles Same Number
 console.log("\nTest 5: Multiple Tiles Same Number");
 game.map.clear();
 game.map.set("0,0", {

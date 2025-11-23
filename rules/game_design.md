@@ -17,7 +17,8 @@ VPs are gained by:
 > **Semi-Cooperative**: You must work together to keep Threat < 10, but only one player can win by reaching 10 VP first.
 
 ## 3. Components
-- **Hex Tiles**: 
+- **Hex Tiles**:
+    - **Back side shows Encounter Level (1/2/3)** for strategic planning of outposts/exploration
     - **Ruins** (Produces Scrap)
     - **Wasteland** (Produces Fuel)
     - **Overgrown** (Produces Food)
@@ -87,7 +88,7 @@ Perform any number of actions:
     - **Resolution**: 
         - Assign dice to Slots first.
         - If all slots covered, Enemy defeated.
-        - **Failure**: Hero returns to nearest Outpost and is **Inactive for 2 turns**. **Threat Track increases by 1**.
+        - **Failure**: Hero returns to nearest Outpost and is **Inactive for 2 turns**. **Threat Track increases by 1**. Track total deaths per player; on the third defeat that player is eliminated.
     - **Co-op Assist**:
         - Another player adjacent to the encounter can join.
         - Combine Dice Pools.
@@ -105,6 +106,7 @@ Each player controls **exactly one unique Commander**.
     - Encounter cards are tucked under hero card, showing equipment bonuses on left side
     - Maximum 4 equipment slots: Head, Body, Weapon, Tech
 - **Combat Dice**: Always roll 3 dice (1 yellow, 1 red, 1 blue) + apply equipment modifiers
+- **Elimination**: Each time a hero is defeated, mark a skull on the player board; after 3 defeats the player is removed from the game
 - **Stats**:
     - **Tactics (Yellow)**: Ranged attacks, flanking.
     - **Strength (Red)**: Heavy weapons, armor breaking.

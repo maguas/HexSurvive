@@ -11,7 +11,6 @@ const combat = new CombatSystem(game);
 let selectedHex = null;
 let hoveredTile = null;
 let hoveredEdge = null;
-let patrolMode = false;
 let buildMode = null; // 'outpost' or 'fortress' or null
 let setupOutpostTile = null; // Track where outpost was placed
 
@@ -28,7 +27,6 @@ function init() {
     // document.getElementById('btn-explore').addEventListener('click', toggleExploreMode);
     document.getElementById('btn-build-outpost').addEventListener('click', handleBuildOutpost);
     document.getElementById('btn-upgrade-fortress').addEventListener('click', handleUpgradeFortress);
-    // document.getElementById('btn-train').addEventListener('click', handleTrainHero);
     document.getElementById('btn-end-turn').addEventListener('click', handleEndTurn);
 
     // Canvas interaction
@@ -43,12 +41,6 @@ function init() {
                 buildMode = null;
                 document.body.style.cursor = 'default';
                 log("❌ Build mode cancelled", 'warning');
-                grid.render(game.map, null, game.players);
-            }
-            if (patrolMode) {
-                patrolMode = false;
-                document.body.style.cursor = 'default';
-                log("❌ Patrol mode cancelled", 'warning');
                 grid.render(game.map, null, game.players);
             }
         }
@@ -98,19 +90,70 @@ function updateUI() {
 
     // Hero
     const hero = game.hero;
-    document.getElementById('hero-level').textContent = hero.level;
-    document.getElementById('hero-xp').textContent = hero.xp;
-    // document.getElementById('hero-xp-next').textContent = hero.xpToNext; // Removed in new rules
-    document.getElementById('stat-tac').textContent = hero.stats.tactics;
-    document.getElementById('stat-str').textContent = hero.stats.strength;
-    document.getElementById('stat-tech').textContent = hero.stats.tech;
+    const player = game.activePlayer;
+    
+    // Update hero name with player color
+    document.getElementById('hero-name').textContent = player.name;
+    document.getElementById('hero-name').style.color = player.color;
+    
+    // Update inactive status
+    const inactiveStatus = document.getElementById('hero-inactive-status');
+    const inactiveTurns = hero.inactiveTurns || 0;
+    if (inactiveTurns > 0) {
+        inactiveStatus.classList.remove('hidden');
+        document.getElementById('inactive-turns').textContent = inactiveTurns;
+    } else {
+        inactiveStatus.classList.add('hidden');
+    }
+    
+    // Update elimination status
+    const eliminatedStatus = document.getElementById('hero-eliminated-status');
+    if (player.eliminated) {
+        eliminatedStatus.classList.remove('hidden');
+    } else {
+        eliminatedStatus.classList.add('hidden');
+    }
+    
+    // Update death count
+    document.getElementById('death-count').textContent = hero.deathCount || 0;
+    
+    // Calculate total stats from base + gear
+    const totalStats = {
+        tactics: hero.stats.tactics,
+        strength: hero.stats.strength,
+        tech: hero.stats.tech
+    };
 
-    // Gear / Hand
-    const gearList = hero.hand.map(item => `${item.name} (+${item.bonus} ${item.slot})`).join(', ');
-    document.getElementById('gear-body').textContent = gearList || 'None';
-    document.getElementById('gear-head').textContent = '-'; // Placeholder
-    document.getElementById('gear-weapon').textContent = '-'; // Placeholder
-    document.getElementById('gear-tech').textContent = '-'; // Placeholder;
+    hero.hand.forEach(item => {
+        if (item.tactics) totalStats.tactics += item.tactics;
+        if (item.strength) totalStats.strength += item.strength;
+        if (item.tech) totalStats.tech += item.tech;
+    });
+
+    // Update stats display
+    document.getElementById('stat-tac').textContent = totalStats.tactics;
+    document.getElementById('stat-str').textContent = totalStats.strength;
+    document.getElementById('stat-tech').textContent = totalStats.tech;
+
+    // Reset Gear Slots
+    ['head', 'body', 'weapon', 'tech'].forEach(slot => {
+        const el = document.getElementById(`gear-${slot}`);
+        if (el) el.textContent = '-';
+    });
+
+    // Update Gear Display
+    hero.hand.forEach(item => {
+        if (item.slot) {
+            const el = document.getElementById(`gear-${item.slot}`);
+            if (el) {
+                const stats = [];
+                if (item.tactics) stats.push(`+${item.tactics} Tac`);
+                if (item.strength) stats.push(`+${item.strength} Str`);
+                if (item.tech) stats.push(`+${item.tech} Tech`);
+                el.textContent = `${item.name} (${stats.join(', ')})`;
+            }
+        }
+    });
 
     // Check win condition
     if (game.victoryPoints >= 10) {
@@ -169,11 +212,6 @@ function handleRollDice() {
             }
         }
 
-        if (invasionResult.needsPatrolMove) {
-            patrolMode = true;
-            document.body.style.cursor = 'crosshair';
-            log("👁️ Click a revealed tile to move the Alien Patrol", 'warning');
-        }
     } else {
         const playerGains = game.harvest(roll.total);
         if (playerGains) {
@@ -242,15 +280,224 @@ function handleEndTurn() {
 }
 
 function handleFight() {
-    // Combat handling is done via resolveEncounter
+    // Hide initial actions
+    document.getElementById('initial-actions').style.display = 'none';
+    
+    // Show combat phase
+    const combatPhase = document.getElementById('combat-phase');
+    combatPhase.classList.remove('hidden');
+    
+    // Roll dice using combat system (handles gear bonuses)
+    const rolledDice = combat.rollHeroDice(game.hero);
+    
+    const tacticsDice = rolledDice.filter(d => d.type === 'tac').map(d => d.value);
+    const strengthDice = rolledDice.filter(d => d.type === 'str').map(d => d.value);
+    const techDice = rolledDice.filter(d => d.type === 'tech').map(d => d.value);
+    
+    // Calculate totals
+    const tacticsTotal = tacticsDice.reduce((a, b) => a + b, 0);
+    const strengthTotal = strengthDice.reduce((a, b) => a + b, 0);
+    const techTotal = techDice.reduce((a, b) => a + b, 0);
+    
+    // Display dice
+    const playerDice = document.getElementById('player-dice');
+    playerDice.innerHTML = `
+        <div class="dice-item tactics">
+            <div class="dice-icon">🎯</div>
+            <div class="dice-value">${tacticsTotal}</div>
+            <div class="dice-label">Tactics</div>
+        </div>
+        <div class="dice-item strength">
+            <div class="dice-icon">💪</div>
+            <div class="dice-value">${strengthTotal}</div>
+            <div class="dice-label">Strength</div>
+        </div>
+        <div class="dice-item tech">
+            <div class="dice-icon">🔧</div>
+            <div class="dice-value">${techTotal}</div>
+            <div class="dice-label">Tech</div>
+        </div>
+    `;
+    
+    // Check requirements
+    const enemy = combat.currentEncounter.enemy;
+    const requirements = {
+        tactics: tacticsTotal,
+        strength: strengthTotal,
+        tech: techTotal,
+        tac: tacticsTotal,
+        str: strengthTotal
+    };
+    
+    let allMet = true;
+    const resolutionHTML = [];
+    
+    const statConfig = {
+        tac: { label: 'Tactics', icon: '🎯' },
+        str: { label: 'Strength', icon: '💪' },
+        tech: { label: 'Tech', icon: '🔧' },
+        tactics: { label: 'Tactics', icon: '🎯' },
+        strength: { label: 'Strength', icon: '💪' }
+    };
+    
+    enemy.slots.forEach(slot => {
+        const playerValue = requirements[slot.type];
+        const met = playerValue >= slot.value;
+        if (!met) allMet = false;
+        
+        const config = statConfig[slot.type] || { label: slot.type, icon: '❓' };
+        
+        resolutionHTML.push(`
+            <div class="resolution-item ${met ? 'success' : 'failure'}">
+                <div class="resolution-requirement">
+                    <span>${config.icon}</span>
+                    <span>${config.label.toUpperCase()}: ${slot.value}+ required</span>
+                </div>
+                <div class="resolution-result">
+                    ${playerValue} ${met ? '✅' : '❌'}
+                </div>
+            </div>
+        `);
+    });
+    
+    document.getElementById('combat-resolution').innerHTML = resolutionHTML.join('');
+    
+    // Show result after delay
+    setTimeout(() => {
+        showCombatResult(allMet);
+    }, 2000);
 }
 
 function handleRetreat() {
-    const result = combat.retreat();
-    log(result.message, 'warning');
+    // Halve resources
+    const player = game.activePlayer;
+    for (const res in player.resources) {
+        player.resources[res] = Math.floor(player.resources[res] / 2);
+    }
+    
+    log('🏃 Retreated from combat! Resources halved.', 'warning');
     closeCombatModal();
     updateUI();
+    grid.render(game.map, null, game.players);
 }
+
+function showCombatResult(victory) {
+    // Hide combat phase
+    document.getElementById('combat-phase').classList.add('hidden');
+    
+    // Show result phase
+    const resultPhase = document.getElementById('result-phase');
+    resultPhase.classList.remove('hidden');
+    
+    const resultBanner = document.getElementById('result-banner');
+    const resultActions = document.getElementById('result-actions');
+    
+    if (victory) {
+        // VICTORY
+        resultBanner.className = 'result-banner victory';
+        resultBanner.textContent = '🎉 VICTORY! 🎉';
+        
+        const reward = combat.currentEncounter.reward;
+        
+        resultActions.innerHTML = `
+            <p style="text-align: center; margin-bottom: 15px;">You defeated the enemy! Claim your rewards:</p>
+            <button class="action-btn primary" onclick="claimRewards()">✅ Claim Rewards</button>
+        `;
+        
+        log('✅ Victory! All requirements met!', 'success');
+    } else {
+        // DEFEAT
+        resultBanner.className = 'result-banner defeat';
+        resultBanner.textContent = '💀 DEFEAT 💀';
+        
+        resultActions.innerHTML = `
+            <p style="text-align: center; margin-bottom: 15px;">You were defeated! Choose which resources to discard:</p>
+            <div id="discard-options" style="margin-bottom: 15px;"></div>
+            <button class="action-btn danger" onclick="acceptDefeat()">Accept Defeat</button>
+        `;
+        
+        // Show resource discard options
+        const discardOptions = document.getElementById('discard-options');
+        const player = game.activePlayer;
+        const resourceIcons = {
+            scrap: '🔩',
+            fuel: '⚡',
+            food: '🍏',
+            alloy: '🔮',
+            intel: '💾'
+        };
+        
+        let html = '<div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">';
+        for (const [res, amt] of Object.entries(player.resources)) {
+            if (amt > 0) {
+                const toDiscard = Math.floor(amt / 2);
+                html += `
+                    <div style="padding: 8px; background: rgba(244,67,54,0.1); border-radius: 6px; text-align: center;">
+                        <div>${resourceIcons[res]} ${res}</div>
+                        <div style="color: var(--accent-red); font-weight: bold;">${amt} → ${amt - toDiscard}</div>
+                    </div>
+                `;
+            }
+        }
+        html += '</div>';
+        discardOptions.innerHTML = html;
+        
+        log('❌ Defeat! Requirements not met.', 'danger');
+    }
+}
+
+window.claimRewards = function() {
+    const reward = combat.currentEncounter.reward;
+    const player = game.activePlayer;
+    
+    // Add equipment to hero
+    if (reward.equipment) {
+        player.hero.hand.push(reward.equipment);
+        log(`🎁 Gained equipment: ${reward.equipment.name}`, 'success');
+    }
+    
+    // Add resources
+    if (reward.resources) {
+        for (const [res, amt] of Object.entries(reward.resources)) {
+            player.resources[res] += amt;
+        }
+        log(`💎 Gained resources!`, 'success');
+    }
+    
+    closeCombatModal();
+    updateUI();
+    grid.render(game.map, null, game.players);
+};
+
+window.acceptDefeat = function() {
+    const player = game.activePlayer;
+    
+    // Halve resources
+    for (const res in player.resources) {
+        player.resources[res] = Math.floor(player.resources[res] / 2);
+    }
+    
+    // Call defeatHero
+    const defeatResult = game.defeatHero(player.id);
+    
+    if (defeatResult.eliminated) {
+        if (defeatResult.winner) {
+            log(`💀 ${player.name} eliminated! ${defeatResult.winner.name} wins!`, 'danger');
+            alert(`${defeatResult.winner.name} wins by elimination!`);
+            location.reload();
+            return;
+        } else {
+            log(`💀 ${player.name} eliminated after 3 defeats!`, 'danger');
+        }
+    } else {
+        log(`💀 Hero defeated! Respawning at nearest outpost (Inactive for 2 turns)`, 'danger');
+        log(`☠️ Death count: ${defeatResult.deathCount}/3`, 'warning');
+    }
+    
+    closeCombatModal();
+    updateUI();
+    grid.render(game.map, null, game.players);
+};
 
 function handleCanvasMouseMove(event) {
     const rect = event.target.getBoundingClientRect();
@@ -275,20 +522,6 @@ function handleCanvasMouseMove(event) {
             hoveredEdge = edgeData;
             hoveredTile = null;
             grid.render(game.map, null, game.players, hoveredEdge);
-        }
-        return;
-    }
-
-    // PATROL MODE: Highlight tiles only
-    if (patrolMode) {
-        const hex = grid.pixelToHex(mouseX, mouseY);
-        const tile = game.map.get(`${hex.q},${hex.r}`);
-
-        if (tile && tile.revealed) {
-            hoveredTile = hex;
-            grid.render(game.map, hoveredTile, game.players, null);
-        } else {
-            grid.render(game.map, null, game.players, null);
         }
         return;
     }
@@ -404,29 +637,6 @@ function handleCanvasClick(event) {
         return;
     }
 
-    // ===== PATROL MODE (Tile clicks only) =====
-    if (patrolMode) {
-        const hex = grid.pixelToHex(mouseX, mouseY);
-        const key = `${hex.q},${hex.r}`;
-        const tile = game.map.get(key);
-
-        if (!tile || !tile.revealed) {
-            log("❌ Can only move patrol to revealed tiles", 'warning');
-            return;
-        }
-
-        const result = game.moveAlienPatrol(hex.q, hex.r);
-        if (result.success) {
-            log("👽 Alien Patrol moved!", 'success');
-            patrolMode = false;
-            document.body.style.cursor = 'default';
-            updateUI();
-            grid.render(game.map, selectedHex, game.players);
-        } else {
-            log(`❌ ${result.reason}`, 'warning');
-        }
-        return;
-    }
 
     // ===== BUILD MODE (Tile clicks only) =====
     if (buildMode) {
@@ -461,6 +671,17 @@ function handleCanvasClick(event) {
 
     // ===== ACTION PHASE (Edge clicks for movement only) =====
     if (game.phase === 'action' && !buildMode) {
+        // Check if hero is inactive or player is eliminated
+        if (game.activePlayer.hero.inactiveTurns > 0) {
+            log(`❌ Your hero is inactive for ${game.activePlayer.hero.inactiveTurns} more turn(s)`, 'warning');
+            return;
+        }
+        
+        if (game.activePlayer.eliminated) {
+            log(`❌ You have been eliminated from the game`, 'danger');
+            return;
+        }
+        
         const edgeData = grid.getClosestEdge(mouseX, mouseY);
         const mid = grid.getEdgeMidpoint(edgeData.q, edgeData.r, edgeData.edgeIndex);
         const dist = Math.sqrt(Math.pow(mouseX - mid.x, 2) + Math.pow(mouseY - mid.y, 2));
@@ -502,8 +723,15 @@ function handleCanvasClick(event) {
                 if (result.encounters && result.encounters.length > 0) {
                     setTimeout(() => {
                         const encounter = result.encounters[0];
-                        log(`⚠️ Encounter: ${encounter.card.title}`, 'warning');
-                        showEncounterModal(encounter.card);
+                        const card = encounter.card;
+                        
+                        // Handle combat encounters (All encounters are now combat/interactive)
+                        const encounterData = {
+                            tile: encounter.tile,
+                            encounterCard: card
+                        };
+                        log(`⚠️ Encounter: ${card.enemy?.name || card.title || 'Enemy'}`, 'warning');
+                        showCombatModal(encounterData);
                     }, 500);
                 }
             } else {
@@ -524,205 +752,6 @@ function handleCanvasClick(event) {
 }
 
 // ...
-
-function showEncounterModal(card) {
-    if (card.type === 'stash') {
-        log(`🎁 Found Stash: ${card.title}`, 'success');
-        applyReward(card.reward);
-        return;
-    }
-
-    // Combat or Hazard
-    const modal = document.getElementById('combat-modal');
-    const combatInfo = document.getElementById('combat-info');
-    const combatDiceArea = document.getElementById('combat-dice-area');
-
-    // Initiate Combat
-    const combatData = combat.initiateCombat(card);
-
-    // Display Enemy with Enhanced Slot Display
-    const slotsHTML = card.enemy.slots.map(slot => {
-        let color = '#888';
-        let icon = '⚪';
-        if (slot.type === 'str') { color = '#f44336'; icon = '🔴'; }
-        if (slot.type === 'tac') { color = '#ffd700'; icon = '🟡'; }
-        if (slot.type === 'tech') { color = '#40c4ff'; icon = '🔵'; }
-        if (slot.type === 'any') { color = '#888'; icon = '⚪'; }
-        
-        return `
-            <div class="enemy-slot" style="background: ${color}33; border: 2px solid ${color};">
-                <div class="slot-icon">${icon}</div>
-                <div class="slot-label">${slot.label}</div>
-                <div class="slot-value">${slot.value}</div>
-            </div>
-        `;
-    }).join('');
-
-    combatInfo.innerHTML = `
-        <div class="enemy-card">
-            <h3>👾 ${card.title}</h3>
-            <div class="enemy-level">Level ${card.level}</div>
-            <p class="enemy-desc">${card.description}</p>
-            <div class="enemy-slots-title">⚠️ Required Slots:</div>
-            <div class="enemy-slots-container">
-                ${slotsHTML}
-            </div>
-            <div class="enemy-reward">
-                🎁 Reward: ${card.reward.type === 'xp' ? `${card.reward.value} XP` : card.reward.item?.name || 'Unknown'}
-            </div>
-        </div>
-    `;
-
-    // Display Player Dice with Rolling Animation
-    combatDiceArea.innerHTML = `
-        <h4>🎲 Your Dice Roll:</h4>
-        <div class="dice-container rolling">
-            ${combat.getDiceHTML(combatData.playerDice)}
-        </div>
-        <div class="combat-hint">Click "Fight!" to resolve combat</div>
-    `;
-
-    // Remove rolling animation after short delay
-    setTimeout(() => {
-        const container = combatDiceArea.querySelector('.dice-container');
-        if (container) container.classList.remove('rolling');
-    }, 500);
-
-    // Setup buttons
-    document.getElementById('btn-fight').onclick = () => resolveEncounterAnimated();
-    document.getElementById('btn-retreat').onclick = () => handleRetreat();
-
-    modal.classList.remove('hidden');
-}
-
-function resolveEncounterAnimated() {
-    const combatDiceArea = document.getElementById('combat-dice-area');
-    const modal = document.getElementById('combat-modal');
-    
-    // Hide fight button
-    document.getElementById('btn-fight').style.display = 'none';
-    document.getElementById('btn-retreat').style.display = 'none';
-    
-    // Show resolution message
-    combatDiceArea.innerHTML = '<div class="combat-resolving">⚔️ Resolving Combat...</div>';
-    
-    setTimeout(() => {
-        const result = combat.resolveCombat();
-        
-        // Display Result Banner
-        const bannerClass = result.victory ? 'victory-banner' : 'defeat-banner';
-        const bannerText = result.victory ? '🎉 VICTORY! 🎉' : '💀 DEFEAT 💀';
-        const bannerColor = result.victory ? '#4caf50' : '#f44336';
-        
-        combatDiceArea.innerHTML = `
-            <div class="${bannerClass}" style="
-                font-size: 2rem;
-                font-weight: bold;
-                color: ${bannerColor};
-                text-align: center;
-                padding: 20px;
-                border: 3px solid ${bannerColor};
-                border-radius: 10px;
-                background: ${bannerColor}22;
-                animation: pulse 0.5s;
-                margin: 20px 0;
-            ">
-                ${bannerText}
-            </div>
-            <div class="combat-result-details">
-                ${result.victory ? 
-                    `<p>✅ All enemy slots covered!</p>` : 
-                    `<p>❌ ${result.message}</p><p>Hero takes 1 damage!</p>`
-                }
-            </div>
-        `;
-        
-        // Log result
-        if (result.victory) {
-            log(`✅ Victory! All slots covered!`, 'success');
-        } else {
-            log(`❌ Defeat! ${result.message}`, 'danger');
-            const threatResult = game.handleEncounterFailure();
-            if (threatResult.gameOver) {
-                alert("GAME OVER! The Alien Threat has overwhelmed you.");
-                location.reload();
-                return;
-            }
-            log(`Threat increased to Level ${threatResult.level} (Track: ${threatResult.track}/5)`, 'danger');
-        }
-        
-        // Show loot/reward UI after delay
-        setTimeout(() => {
-            if (result.victory && result.reward) {
-                showRewardUI(result.reward);
-            } else {
-                // Close modal after defeat
-                setTimeout(() => {
-                    closeCombatModal();
-                    updateUI();
-                }, 2000);
-            }
-        }, 1500);
-        
-    }, 1000);
-}
-
-function showRewardUI(reward) {
-    const combatDiceArea = document.getElementById('combat-dice-area');
-    
-    if (reward.type === 'xp') {
-        combatDiceArea.innerHTML += `
-            <div class="reward-display">
-                <h3>🎁 Reward</h3>
-                <div class="reward-item">
-                    <div class="xp-cube">✨ ${reward.value} XP</div>
-                </div>
-                <button id="btn-claim-reward" class="action-btn primary">Claim Reward</button>
-            </div>
-        `;
-        
-        document.getElementById('btn-claim-reward').onclick = () => {
-            applyReward(reward);
-            closeCombatModal();
-            updateUI();
-        };
-    } else if (reward.type === 'loot' && reward.item) {
-        combatDiceArea.innerHTML += `
-            <div class="reward-display">
-                <h3>🎁 Loot Found!</h3>
-                <div class="loot-item">
-                    <div class="item-name">${reward.item.name}</div>
-                    <div class="item-bonus">+${reward.item.bonus} ${reward.item.slot}</div>
-                </div>
-                <button id="btn-claim-reward" class="action-btn primary">Take Item</button>
-            </div>
-        `;
-        
-        document.getElementById('btn-claim-reward').onclick = () => {
-            applyReward(reward);
-            closeCombatModal();
-            updateUI();
-        };
-    }
-}
-
-function resolveEncounter() {
-    resolveEncounterAnimated();
-}
-
-function applyReward(reward) {
-    if (reward.type === 'xp') {
-        const result = game.gainXp(reward.value);
-        log(`✨ Gained ${reward.value} XP Cube! (Total: ${game.hero.xp})`, 'success');
-        if (result.levelUp) {
-            log(`🆙 Level Up! +1 Combat Die`, 'success');
-        }
-    } else if (reward.type === 'loot') {
-        game.addLoot(reward.item);
-        log(`🎒 Looted: ${reward.item.name}`, 'success');
-    }
-    updateUI();
-}
 
 function handleBuildOutpost() {
     if (game.phase !== 'action') {
@@ -746,43 +775,103 @@ function handleUpgradeFortress() {
     log("🏰 Upgrade Fortress mode: Click an existing outpost to upgrade", 'warning');
 }
 
-function handleTrainHero() {
-    const result = game.trainHero();
-
-    if (result.success) {
-        if (result.levelUp) {
-            log(`🎓 Hero leveled up to Level ${game.playerHero.level}!`, 'success');
-        } else {
-            log(`📚 Hero trained! +${result.xpGain} XP`, 'success');
-        }
-        updateUI();
-    } else {
-        log(`❌ ${result.reason}`, 'warning');
-    }
-}
-
 function showCombatModal(encounter) {
     const modal = document.getElementById('combat-modal');
-    const combatInfo = document.getElementById('combat-info');
-    const combatDiceArea = document.getElementById('combat-dice-area');
-
-    // Initialize combat
-    const combatData = combat.initiateCombat(encounter);
-
-    // Show enemy info
-    combatInfo.innerHTML = combat.getEnemyHTML(encounter);
-
-    // Show player dice
-    combatDiceArea.innerHTML = `
-        <h4>Your Dice:</h4>
-        <div class="dice-container">
-            ${combat.getDiceHTML(combatData.playerDice)}
-        </div>
-        <div style="margin-top: 10px;">
-            <small>Total: ${combatData.playerDice.reduce((sum, d) => sum + d.value, 0)}</small>
-        </div>
-    `;
-
+    
+    // Get encounter data
+    const card = encounter.encounterCard;
+    const enemy = card.enemy;
+    const reward = card.reward;
+    
+    // Initialize combat with the card
+    combat.initiateCombat(card);
+    
+    // Set encounter level badge
+    const levelBadge = document.getElementById('encounter-level-badge');
+    const encounterLevel = encounter.tile.encounterLevel || 1;
+    levelBadge.textContent = `Level ${encounterLevel}`;
+    levelBadge.style.background = encounterLevel === 3 ? '#F44336' : encounterLevel === 2 ? '#FFC107' : '#4CAF50';
+    
+    // Set encounter name and description
+    document.querySelector('.encounter-name').textContent = card.title || 'Unknown Enemy';
+    document.querySelector('.encounter-description').textContent = card.description || 'A dangerous foe blocks your path...';
+    
+    // Build requirements list
+    const requirementsList = document.getElementById('requirements-list');
+    requirementsList.innerHTML = '';
+    
+    const statConfig = {
+        tac: { label: 'Tactics', icon: '🎯', class: 'tactics' },
+        str: { label: 'Strength', icon: '💪', class: 'strength' },
+        tech: { label: 'Tech', icon: '🔧', class: 'tech' },
+        tactics: { label: 'Tactics', icon: '🎯', class: 'tactics' },
+        strength: { label: 'Strength', icon: '💪', class: 'strength' }
+    };
+    
+    enemy.slots.forEach(slot => {
+        const config = statConfig[slot.type] || { label: slot.type, icon: '❓', class: '' };
+        const reqItem = document.createElement('div');
+        reqItem.className = `requirement-item ${config.class}`;
+        reqItem.innerHTML = `
+            <div class="requirement-icon">${config.icon}</div>
+            <div class="requirement-value">${slot.value}+</div>
+            <div class="requirement-label">${config.label}</div>
+        `;
+        requirementsList.appendChild(reqItem);
+    });
+    
+    // Build rewards section
+    const gearReward = document.getElementById('gear-reward');
+    const resourceRewards = document.getElementById('resource-rewards');
+    
+    // Display Equipment Reward
+    if (reward.equipment) {
+        const eq = reward.equipment;
+        const gearStats = [];
+        if (eq.tactics) gearStats.push(`<span class="gear-stat tactics">🎯 +${eq.tactics} Tactics</span>`);
+        if (eq.strength) gearStats.push(`<span class="gear-stat strength">💪 +${eq.strength} Strength</span>`);
+        if (eq.tech) gearStats.push(`<span class="gear-stat tech">🔧 +${eq.tech} Tech</span>`);
+        
+        gearReward.innerHTML = `
+            <div class="gear-name">${eq.name || 'Equipment'}</div>
+            <div class="gear-stats">${gearStats.join('')}</div>
+        `;
+        gearReward.style.display = 'block';
+    } else {
+        gearReward.style.display = 'none';
+    }
+    
+    // Resource rewards
+    const resourceIcons = {
+        scrap: '🔩',
+        fuel: '⚡',
+        food: '🍏',
+        alloy: '🔮',
+        intel: '💾'
+    };
+    
+    resourceRewards.innerHTML = '';
+    if (reward.resources) {
+        for (const [res, amt] of Object.entries(reward.resources)) {
+            if (amt > 0) {
+                const resItem = document.createElement('div');
+                resItem.className = 'resource-reward-item';
+                resItem.innerHTML = `<span>${resourceIcons[res] || '❓'}</span><span>${amt}</span>`;
+                resourceRewards.appendChild(resItem);
+            }
+        }
+    }
+    
+    // Handle empty rewards
+    if (!reward.equipment && (!reward.resources || Object.keys(reward.resources).length === 0)) {
+        resourceRewards.innerHTML = '<div style="text-align: center; color: var(--text-dim);">Small stash of resources</div>';
+    }
+    
+    // Reset phases
+    document.getElementById('combat-phase').classList.add('hidden');
+    document.getElementById('result-phase').classList.add('hidden');
+    document.getElementById('initial-actions').style.display = 'flex';
+    
     modal.classList.remove('hidden');
 }
 

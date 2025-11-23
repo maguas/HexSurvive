@@ -91,9 +91,22 @@ export class CombatSystem {
 
     rollHeroDice(hero) {
         const dice = [];
+        
+        let tactics = hero.stats.tactics;
+        let strength = hero.stats.strength;
+        let tech = hero.stats.tech;
+
+        // Add gear bonuses
+        if (hero.hand) {
+            hero.hand.forEach(item => {
+                if (item.tactics) tactics += item.tactics;
+                if (item.strength) strength += item.strength;
+                if (item.tech) tech += item.tech;
+            });
+        }
 
         // Roll Tactics dice (Yellow)
-        for (let i = 0; i < hero.stats.tactics; i++) {
+        for (let i = 0; i < tactics; i++) {
             dice.push({
                 type: 'tac',
                 value: Math.floor(Math.random() * 6) + 1,
@@ -102,7 +115,7 @@ export class CombatSystem {
         }
 
         // Roll Strength dice (Red)
-        for (let i = 0; i < hero.stats.strength; i++) {
+        for (let i = 0; i < strength; i++) {
             dice.push({
                 type: 'str',
                 value: Math.floor(Math.random() * 6) + 1,
@@ -111,7 +124,7 @@ export class CombatSystem {
         }
 
         // Roll Tech dice (Blue)
-        for (let i = 0; i < hero.stats.tech; i++) {
+        for (let i = 0; i < tech; i++) {
             dice.push({
                 type: 'tech',
                 value: Math.floor(Math.random() * 6) + 1,

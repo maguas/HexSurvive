@@ -13,18 +13,19 @@ This document tracks all currently implemented features in the game. It reflects
 - **Player switching** at end of turn
 - Each player has independent resources, hero, and victory points
 
-### Map & Hex Grid
-- **Edge-based hero positioning**: Heroes stand on edges between tiles, not on tile centers
-- **Fog of war**: All tiles start unrevealed (dark)
-- **Tile types**:
-  - **Ruins** → Scrap (🔩)
-  - **Wasteland** → Fuel (⚡)
-  - **Overgrown** → Food (🍏)
-  - **Crash Site** → Alloy (🔮)
-  - **Bunker** → Intel (💾)
-  - **Barren** → No production (❓)
-- **Number tokens**: 2-12 assigned on reveal for production
-- **Hex grid rendering**: Canvas-based with hover highlights and selection
+- ### Map & Hex Grid
+ - **Edge-based hero positioning**: Heroes stand on edges between tiles, not on tile centers
+ - **Fog of war**: All tiles start unrevealed (dark)
+ - **Encounter level preview**: Tile backs display threat level (1/2/3) so players can plan outpost placement/exploration risk
+ - **Tile types**:
+   - **Ruins** → Scrap (🔩)
+   - **Wasteland** → Fuel (⚡)
+   - **Overgrown** → Food (🍏)
+   - **Crash Site** → Alloy (🔮)
+   - **Bunker** → Intel (💾)
+   - **Barren** → No production (❓)
+ - **Number tokens**: 2-12 assigned on reveal for production
+ - **Hex grid rendering**: Canvas-based with hover highlights and selection
 
 ---
 
@@ -178,16 +179,17 @@ Players can perform actions:
   - Dice assignment visualization
   - Result banner (Victory! / Defeat!)
 
-### Combat Results
-- **Victory**:
-  - Equipment loot (encounter card becomes equipment)
-  - Resource rewards (optional, card-specific)
-  - Card is tucked under hero card showing equipment bonuses
-  - Reward UI with claim button
-- **Defeat**:
-  - Hero returns to nearest outpost
-  - Hero is inactive for 2 turns
-  - Threat increase (tracked)
+- ### Combat Results
+ - **Victory**:
+   - Equipment loot (encounter card becomes equipment)
+   - Resource rewards (optional, card-specific)
+   - Card is tucked under hero card showing equipment bonuses
+   - Reward UI with claim button
+ - **Defeat**:
+   - Hero returns to nearest outpost
+   - Hero is inactive for 2 turns
+   - **Death tally increases; on 3rd defeat the player is eliminated from the game**
+   - Threat increase (tracked)
 
 ### Combat UI
 - **Fight/Retreat buttons** (retreat not implemented)

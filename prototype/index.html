@@ -98,13 +98,42 @@
 
             <!-- Combat Modal -->
             <div id="combat-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h2>⚔️ COMBAT ENCOUNTER</h2>
-                    <div id="combat-info"></div>
-                    <div id="combat-dice-area"></div>
-                    <div class="modal-actions">
-                        <button id="btn-fight" class="action-btn primary">Fight!</button>
-                        <button id="btn-retreat" class="action-btn danger">Retreat</button>
+                <div class="modal-content combat-modal-content">
+                    <div class="combat-header">
+                        <h2>⚔️ COMBAT ENCOUNTER</h2>
+                        <div id="encounter-level-badge" class="encounter-level-badge">Level 1</div>
+                    </div>
+                    
+                    <div id="encounter-info" class="encounter-info">
+                        <div class="encounter-name">Unknown Enemy</div>
+                        <div class="encounter-description">Preparing for combat...</div>
+                    </div>
+
+                    <div id="requirements-section" class="requirements-section">
+                        <h3>⚠️ Requirements to Defeat:</h3>
+                        <div id="requirements-list" class="requirements-list"></div>
+                    </div>
+
+                    <div id="rewards-section" class="rewards-section">
+                        <h3>🎁 Rewards:</h3>
+                        <div id="gear-reward" class="gear-reward"></div>
+                        <div id="resource-rewards" class="resource-rewards"></div>
+                    </div>
+
+                    <div id="combat-phase" class="combat-phase hidden">
+                        <h3>🎲 Your Dice Roll:</h3>
+                        <div id="player-dice" class="player-dice"></div>
+                        <div id="combat-resolution" class="combat-resolution"></div>
+                    </div>
+
+                    <div id="result-phase" class="result-phase hidden">
+                        <div id="result-banner" class="result-banner"></div>
+                        <div id="result-actions" class="result-actions"></div>
+                    </div>
+
+                    <div id="initial-actions" class="modal-actions">
+                        <button id="btn-fight" class="action-btn primary">⚔️ Fight!</button>
+                        <button id="btn-retreat" class="action-btn danger">🏃 Retreat</button>
                     </div>
                 </div>
             </div>
@@ -115,30 +144,37 @@
             <div class="panel">
                 <h2>🦸 Commander</h2>
                 <div id="hero-card">
-                    <div class="hero-name">Commander</div>
-                    <div class="hero-level">Level <span id="hero-level">1</span></div>
-                    <div class="hero-xp">
-                        XP: <span id="hero-xp">0</span> / <span id="hero-xp-next">10</span>
+                    <div class="hero-name" id="hero-name">Commander</div>
+                    <div class="hero-status">
+                        <div id="hero-inactive-status" class="status-inactive hidden">
+                            ⏸️ Inactive: <span id="inactive-turns">0</span> turn(s)
+                        </div>
+                        <div id="hero-eliminated-status" class="status-eliminated hidden">
+                            💀 ELIMINATED
+                        </div>
+                        <div class="death-counter">
+                            Defeats: <span id="death-count">0</span> / 3
+                        </div>
                     </div>
                     <div class="hero-stats">
                         <div class="stat-item stat-tac">
                             <span class="stat-label">Tactics</span>
-                            <span id="stat-tac" class="stat-value">2</span>d6
+                            <span id="stat-tac" class="stat-value">1</span>
                         </div>
                         <div class="stat-item stat-str">
                             <span class="stat-label">Strength</span>
-                            <span id="stat-str" class="stat-value">2</span>d6
+                            <span id="stat-str" class="stat-value">1</span>
                         </div>
                         <div class="stat-item stat-tech">
                             <span class="stat-label">Tech</span>
-                            <span id="stat-tech" class="stat-value">2</span>d6
+                            <span id="stat-tech" class="stat-value">1</span>
                         </div>
                     </div>
                     <div class="hero-gear">
                         <h3>Equipment</h3>
                         <div class="gear-item">🪖 Head: <span id="gear-head">-</span></div>
-                        <div class="gear-item">🦺 Body: <span id="gear-body">Flak Jacket</span></div>
-                        <div class="gear-item">🔫 Weapon: <span id="gear-weapon">Rifle</span></div>
+                        <div class="gear-item">🦺 Body: <span id="gear-body">-</span></div>
+                        <div class="gear-item">🔫 Weapon: <span id="gear-weapon">-</span></div>
                         <div class="gear-item">📡 Tech: <span id="gear-tech">-</span></div>
                     </div>
                 </div>
