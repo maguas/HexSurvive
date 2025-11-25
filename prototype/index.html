@@ -64,18 +64,11 @@
                 <!-- <button id="btn-explore" class="action-btn" title="Select a fog tile then click">🔍 Explore Mode</button> -->
                 <button id="btn-build-outpost" class="action-btn">
                     <span class="btn-label">🏠 Build Outpost</span>
-                    <span class="btn-cost">
-                        <span class="cost-item">🔩1</span>
-                        <span class="cost-item">🍏1</span>
-                        <span class="cost-item">⚡1</span>
-                    </span>
+                    <span class="btn-cost" data-cost-key="buildOutpost"></span>
                 </button>
                 <button id="btn-upgrade-fortress" class="action-btn">
                     <span class="btn-label">🏰 Upgrade Fortress</span>
-                    <span class="btn-cost">
-                        <span class="cost-item">🔩2</span>
-                        <span class="cost-item">🔮3</span>
-                    </span>
+                    <span class="btn-cost" data-cost-key="upgradeFortress"></span>
                 </button>
                 <!-- <button id="btn-train" class="action-btn">📚 Train Hero</button> -->
                 <button id="btn-end-turn" class="action-btn">⏭️ End Turn</button>
@@ -128,6 +121,7 @@
 
                     <div id="result-phase" class="result-phase hidden">
                         <div id="result-banner" class="result-banner"></div>
+                        <div id="result-message" class="result-message"></div>
                         <div id="result-actions" class="result-actions"></div>
                     </div>
 

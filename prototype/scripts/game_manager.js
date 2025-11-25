@@ -1,4 +1,5 @@
 import { EncounterManager } from './encounter_manager.js';
+import { ACTION_COSTS, formatCostString, canAfford, applyCost } from './action_costs.js';
 
 export class GameManager {
     constructor() {
@@ -52,7 +53,8 @@ export class GameManager {
                 hand: []            // Equipped items
             },
             victoryPoints: 0,
-            eliminated: false       // Player eliminated after 3 defeats
+            eliminated: false,       // Player eliminated after 3 defeats
+            encountersResolved: 0    // Track encounters per turn
         };
     }
 
@@ -314,13 +316,18 @@ export class GameManager {
             }
             
             // If not yet revealed, reveal it and give token
+            // LIMIT: Only 1 reveal per move
             if (!tile.revealed) {
-                tile.revealed = true;
-                if (tile.type !== 'barren') {
-                    tile.numberToken = this.generateNumberToken();
+                if (newlyRevealed.length === 0) {
+                    tile.revealed = true;
+                    if (tile.type !== 'barren') {
+                        tile.numberToken = this.generateNumberToken();
+                    }
+                    console.log(`📍 Revealed neighbor at (${n.q}, ${n.r}): ${tile.type} with token ${tile.numberToken}`);
+                    newlyRevealed.push(tile);
+                } else {
+                    console.log("⚠️ Skipped revealing neighbor due to 1-reveal limit");
                 }
-                console.log(`📍 Revealed neighbor at (${n.q}, ${n.r}): ${tile.type} with token ${tile.numberToken}`);
-                newlyRevealed.push(tile);
             }
         }
 
@@ -329,25 +336,34 @@ export class GameManager {
     }
 
     moveHero(q, r, edgeIndex) {
+        // Check encounter limit
+        if (this.activePlayer.encountersResolved > 0) {
+            return { success: false, reason: "Cannot move after resolving an encounter this turn." };
+        }
+
         // Check if destination edge is on an outpost tile (either side of the edge)
         const tile1 = this.map.get(`${q},${r}`);
         const neighbor = this.getNeighbor(q, r, edgeIndex);
         const tile2 = this.map.get(`${neighbor.q},${neighbor.r}`);
 
         const movingToOutpost = (tile1 && tile1.outpost) || (tile2 && tile2.outpost);
+        const moveCost = ACTION_COSTS.moveHero;
 
-        // Moving to outpost edges is FREE, otherwise costs 2 fuel
-        if (!movingToOutpost && this.resources.fuel < 2) {
-            return { success: false, reason: "Not enough Fuel (need 2, or move to an outpost edge for free)" };
+        // Moving to outpost edges is FREE, otherwise costs resources
+        if (!movingToOutpost && !canAfford(this.resources, moveCost)) {
+            return {
+                success: false,
+                reason: `Not enough resources (need ${formatCostString(moveCost)} or move to an outpost edge for free)`
+            };
         }
 
         if (!this.isValidMove(q, r, edgeIndex)) {
             return { success: false, reason: "Invalid move: Must be adjacent edge" };
         }
 
-        // Only consume fuel if NOT moving to an outpost
+        // Only consume resources if NOT moving to an outpost
         if (!movingToOutpost) {
-            this.resources.fuel -= 2;
+            applyCost(this.resources, moveCost);
         }
 
         this.hero.location = { q, r, edgeIndex };
@@ -359,12 +375,21 @@ export class GameManager {
         const encounters = [];
 
         for (const tile of newTiles) {
+            // Limit encounters to 1 per turn
+            if (this.activePlayer.encountersResolved >= 1) {
+                console.log("⚠️ Encounter limit reached for this turn (1/1)");
+                continue; // Skip generating more encounters
+            }
+
             // Draw encounter
             const card = this.encounterManager.drawCard(this.threatLevel);
             encounters.push({
                 tile: tile,
                 card: card
             });
+            
+            this.activePlayer.encountersResolved++;
+            
             // For now, just handle the first one to avoid UI stack overflow?
             // Or return all.
         }
@@ -601,8 +626,9 @@ export class GameManager {
             return { success: false, reason: "Tile already explored or doesn't exist" };
         }
 
-        if (this.resources.fuel < 1 || this.resources.food < 1) {
-            return { success: false, reason: "Not enough resources (need 1 Fuel + 1 Food)" };
+        const exploreCost = ACTION_COSTS.explore;
+        if (!canAfford(this.resources, exploreCost)) {
+            return { success: false, reason: `Not enough resources (need ${formatCostString(exploreCost)})` };
         }
 
         // Check if adjacent to revealed tile
@@ -611,8 +637,7 @@ export class GameManager {
         }
 
         // Pay costs
-        this.resources.fuel--;
-        this.resources.food--;
+        applyCost(this.resources, exploreCost);
 
         // Reveal tile
         tile.revealed = true;
@@ -756,18 +781,16 @@ export class GameManager {
             return { success: false, reason: "Outpost already exists here" };
         }
 
-        if (this.resources.scrap < 1 || this.resources.food < 1 || this.resources.fuel < 1 || this.resources.alloy < 1 || this.resources.intel < 1) {
-            return { success: false, reason: "Not enough resources (need 1 of each: Scrap, Food, Fuel, Alloy, Intel)" };
+        const buildCost = ACTION_COSTS.buildOutpost;
+        if (!canAfford(this.resources, buildCost)) {
+            return { success: false, reason: `Not enough resources (need ${formatCostString(buildCost)})` };
         }
 
         // Pay costs
-        this.resources.scrap--;
-        this.resources.food--;
-        this.resources.fuel--;
-        this.resources.alloy--;
-        this.resources.intel--;
+        applyCost(this.resources, buildCost);
 
         tile.outpost = true;
+        tile.ownerId = this.activePlayer.id; // Assign owner
         this.victoryPoints++;
 
         return { success: true };
@@ -785,14 +808,13 @@ export class GameManager {
             return { success: false, reason: "Already a Fortress" };
         }
 
-        // Cost: 2 Scrap, 3 Alloy
-        if (this.resources.scrap < 2 || this.resources.alloy < 3) {
-            return { success: false, reason: "Not enough resources (need 2 Scrap, 3 Alloy)" };
+        const upgradeCost = ACTION_COSTS.upgradeFortress;
+        if (!canAfford(this.resources, upgradeCost)) {
+            return { success: false, reason: `Not enough resources (need ${formatCostString(upgradeCost)})` };
         }
 
         // Pay costs
-        this.resources.scrap -= 2;
-        this.resources.alloy -= 3;
+        applyCost(this.resources, upgradeCost);
 
         tile.fortress = true;
         this.victoryPoints++; // +1 VP (Total 2 for Fortress vs 1 for Outpost)
@@ -949,6 +971,9 @@ export class GameManager {
             // Safety check to avoid infinite loop
             if (attempts > this.players.length) break;
         } while (this.activePlayer.eliminated);
+
+        // Reset encounter limit for the new player
+        this.activePlayer.encountersResolved = 0;
 
         this.phase = 'production';
 

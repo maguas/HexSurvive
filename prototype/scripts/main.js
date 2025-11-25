@@ -1,11 +1,16 @@
 import { HexGrid } from './hex_grid.js';
 import { GameManager } from './game_manager.js';
 import { CombatSystem } from './combat.js';
+import { IsometricView } from './isometric_view.js';
+import { CombatUI } from './combat_ui.js';
+import { ACTION_COSTS, getCostDisplayData, canAfford } from './action_costs.js';
 
 // Initialize game systems
 const game = new GameManager();
 const grid = new HexGrid('hex-grid-canvas', 900, 650);
+const isoView = new IsometricView('hex-grid-canvas', grid);
 const combat = new CombatSystem(game);
+const combatUI = new CombatUI(combat, game);
 
 // Global state
 let selectedHex = null;
@@ -14,17 +19,43 @@ let hoveredEdge = null;
 let buildMode = null; // 'outpost' or 'fortress' or null
 let setupOutpostTile = null; // Track where outpost was placed
 
+const ACTION_BUTTON_CONFIG = [
+    { id: 'btn-build-outpost', costKey: 'buildOutpost', requiredPhase: 'action' },
+    { id: 'btn-upgrade-fortress', costKey: 'upgradeFortress', requiredPhase: 'action' }
+];
+
+function renderActionButtonCosts() {
+    ACTION_BUTTON_CONFIG.forEach(({ id, costKey }) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+
+        const costContainer = button.querySelector('.btn-cost');
+        if (!costContainer) return;
+
+        const key = costContainer.dataset.costKey || costKey;
+        const cost = ACTION_COSTS[key];
+        if (!cost) {
+            costContainer.textContent = '';
+            return;
+        }
+
+        const parts = getCostDisplayData(cost)
+            .map(entry => `<span class="cost-item">${entry.icon}${entry.amount}</span>`)
+            .join('');
+        costContainer.innerHTML = parts;
+    });
+}
+
 function init() {
-    // game.initGame();
     console.log("Initializing game...");
     console.log("Map size:", game.map.size);
     updateUI();
-    grid.render(game.map, null, game.players);
+    isoView.render(game.map, null, game.players);
+    renderActionButtonCosts();
     console.log("Render called.");
 
     // Event Listeners
     document.getElementById('btn-roll-dice').addEventListener('click', handleRollDice);
-    // document.getElementById('btn-explore').addEventListener('click', toggleExploreMode);
     document.getElementById('btn-build-outpost').addEventListener('click', handleBuildOutpost);
     document.getElementById('btn-upgrade-fortress').addEventListener('click', handleUpgradeFortress);
     document.getElementById('btn-end-turn').addEventListener('click', handleEndTurn);
@@ -41,14 +72,10 @@ function init() {
                 buildMode = null;
                 document.body.style.cursor = 'default';
                 log("❌ Build mode cancelled", 'warning');
-                grid.render(game.map, null, game.players);
+                isoView.render(game.map, null, game.players);
             }
         }
     });
-
-    // Combat modal buttons
-    document.getElementById('btn-fight').addEventListener('click', handleFight);
-    document.getElementById('btn-retreat').addEventListener('click', handleRetreat);
 
     log(`🎮 MULTIPLAYER SETUP: ${game.activePlayer.name}, click on any tile to place your outpost.`);
 }
@@ -166,19 +193,16 @@ function updateUI() {
 }
 
 function updateButtonStates() {
-    const res = game.resources;
-    
-    // Build Outpost (1 scrap, 1 food, 1 fuel)
-    const btnOutpost = document.getElementById('btn-build-outpost');
-    if (btnOutpost) {
-        btnOutpost.disabled = (res.scrap < 1 || res.food < 1 || res.fuel < 1) || game.phase !== 'action';
-    }
-    
-    // Upgrade Fortress (2 scrap, 3 alloy)
-    const btnFortress = document.getElementById('btn-upgrade-fortress');
-    if (btnFortress) {
-        btnFortress.disabled = (res.scrap < 2 || res.alloy < 3) || game.phase !== 'action';
-    }
+    ACTION_BUTTON_CONFIG.forEach(({ id, costKey, requiredPhase }) => {
+        const button = document.getElementById(id);
+        if (!button) return;
+
+        const phaseAllowed = !requiredPhase || game.phase === requiredPhase;
+        const cost = ACTION_COSTS[costKey];
+        const affordable = canAfford(game.resources, cost);
+
+        button.disabled = !(phaseAllowed && affordable);
+    });
     
     // Roll Dice - only in production phase
     const btnRoll = document.getElementById('btn-roll-dice');
@@ -231,327 +255,78 @@ function handleRollDice() {
 
     game.phase = 'action';
     updateUI();
-    grid.render(game.map, selectedHex, game.players);
+    isoView.render(game.map, selectedHex, game.players);
 }
 
 function handleEndTurn() {
     const result = game.endTurn();
 
     // Passive resource income at start of turn (per player)
-    game.players.forEach(player => {
-        let fuelGained = 0;
-        let foodGained = 0;
-
-        game.map.forEach((tile) => {
-            if (tile.outpost && tile.ownerId === player.id) {
-                if (tile.fortress) {
-                    fuelGained += 2;
-                    foodGained += 2;
-                } else {
-                    fuelGained += 1;
-                    foodGained += 1;
-                }
-            }
-        });
-
-        player.resources.fuel += fuelGained;
-        player.resources.food += foodGained;
-
-        if (fuelGained > 0 || foodGained > 0) {
-            log(`⚡ ${player.name}: +${fuelGained} Fuel, +${foodGained} Food (from outposts)`, 'success');
-        }
-    });
-
+    // Already handled in game_manager but we log it here if needed or rely on UI update
+    // Actually game_manager handles the addition.
+    
     log(`--- Turn ${game.turn} ---`);
+    log(`👉 Next Player: ${result.nextPlayer}`);
 
     // Display food consumption
     if (result.distance > 0) {
         if (result.foodConsumed > 0) {
-            log(`🍏 Consumed ${result.foodConsumed} Food (${result.distance} tiles from outpost)`, 'warning');
+            log(`🍏 Consumed ${result.foodConsumed} Food`, 'warning');
         }
 
         if (result.heroReturned) {
             log(`⚠️ Not enough food! Hero returned to nearest outpost`, 'danger');
-            grid.render(game.map, selectedHex, game.players);
+            isoView.render(game.map, selectedHex, game.players);
         }
     }
 
     updateUI();
 }
-
-function handleFight() {
-    // Hide initial actions
-    document.getElementById('initial-actions').style.display = 'none';
-    
-    // Show combat phase
-    const combatPhase = document.getElementById('combat-phase');
-    combatPhase.classList.remove('hidden');
-    
-    // Roll dice using combat system (handles gear bonuses)
-    const rolledDice = combat.rollHeroDice(game.hero);
-    
-    const tacticsDice = rolledDice.filter(d => d.type === 'tac').map(d => d.value);
-    const strengthDice = rolledDice.filter(d => d.type === 'str').map(d => d.value);
-    const techDice = rolledDice.filter(d => d.type === 'tech').map(d => d.value);
-    
-    // Calculate totals
-    const tacticsTotal = tacticsDice.reduce((a, b) => a + b, 0);
-    const strengthTotal = strengthDice.reduce((a, b) => a + b, 0);
-    const techTotal = techDice.reduce((a, b) => a + b, 0);
-    
-    // Display dice
-    const playerDice = document.getElementById('player-dice');
-    playerDice.innerHTML = `
-        <div class="dice-item tactics">
-            <div class="dice-icon">🎯</div>
-            <div class="dice-value">${tacticsTotal}</div>
-            <div class="dice-label">Tactics</div>
-        </div>
-        <div class="dice-item strength">
-            <div class="dice-icon">💪</div>
-            <div class="dice-value">${strengthTotal}</div>
-            <div class="dice-label">Strength</div>
-        </div>
-        <div class="dice-item tech">
-            <div class="dice-icon">🔧</div>
-            <div class="dice-value">${techTotal}</div>
-            <div class="dice-label">Tech</div>
-        </div>
-    `;
-    
-    // Check requirements
-    const enemy = combat.currentEncounter.enemy;
-    const requirements = {
-        tactics: tacticsTotal,
-        strength: strengthTotal,
-        tech: techTotal,
-        tac: tacticsTotal,
-        str: strengthTotal
-    };
-    
-    let allMet = true;
-    const resolutionHTML = [];
-    
-    const statConfig = {
-        tac: { label: 'Tactics', icon: '🎯' },
-        str: { label: 'Strength', icon: '💪' },
-        tech: { label: 'Tech', icon: '🔧' },
-        tactics: { label: 'Tactics', icon: '🎯' },
-        strength: { label: 'Strength', icon: '💪' }
-    };
-    
-    enemy.slots.forEach(slot => {
-        const playerValue = requirements[slot.type];
-        const met = playerValue >= slot.value;
-        if (!met) allMet = false;
-        
-        const config = statConfig[slot.type] || { label: slot.type, icon: '❓' };
-        
-        resolutionHTML.push(`
-            <div class="resolution-item ${met ? 'success' : 'failure'}">
-                <div class="resolution-requirement">
-                    <span>${config.icon}</span>
-                    <span>${config.label.toUpperCase()}: ${slot.value}+ required</span>
-                </div>
-                <div class="resolution-result">
-                    ${playerValue} ${met ? '✅' : '❌'}
-                </div>
-            </div>
-        `);
-    });
-    
-    document.getElementById('combat-resolution').innerHTML = resolutionHTML.join('');
-    
-    // Show result after delay
-    setTimeout(() => {
-        showCombatResult(allMet);
-    }, 2000);
-}
-
-function handleRetreat() {
-    // Halve resources
-    const player = game.activePlayer;
-    for (const res in player.resources) {
-        player.resources[res] = Math.floor(player.resources[res] / 2);
-    }
-    
-    log('🏃 Retreated from combat! Resources halved.', 'warning');
-    closeCombatModal();
-    updateUI();
-    grid.render(game.map, null, game.players);
-}
-
-function showCombatResult(victory) {
-    // Hide combat phase
-    document.getElementById('combat-phase').classList.add('hidden');
-    
-    // Show result phase
-    const resultPhase = document.getElementById('result-phase');
-    resultPhase.classList.remove('hidden');
-    
-    const resultBanner = document.getElementById('result-banner');
-    const resultActions = document.getElementById('result-actions');
-    
-    if (victory) {
-        // VICTORY
-        resultBanner.className = 'result-banner victory';
-        resultBanner.textContent = '🎉 VICTORY! 🎉';
-        
-        const reward = combat.currentEncounter.reward;
-        
-        resultActions.innerHTML = `
-            <p style="text-align: center; margin-bottom: 15px;">You defeated the enemy! Claim your rewards:</p>
-            <button class="action-btn primary" onclick="claimRewards()">✅ Claim Rewards</button>
-        `;
-        
-        log('✅ Victory! All requirements met!', 'success');
-    } else {
-        // DEFEAT
-        resultBanner.className = 'result-banner defeat';
-        resultBanner.textContent = '💀 DEFEAT 💀';
-        
-        resultActions.innerHTML = `
-            <p style="text-align: center; margin-bottom: 15px;">You were defeated! Choose which resources to discard:</p>
-            <div id="discard-options" style="margin-bottom: 15px;"></div>
-            <button class="action-btn danger" onclick="acceptDefeat()">Accept Defeat</button>
-        `;
-        
-        // Show resource discard options
-        const discardOptions = document.getElementById('discard-options');
-        const player = game.activePlayer;
-        const resourceIcons = {
-            scrap: '🔩',
-            fuel: '⚡',
-            food: '🍏',
-            alloy: '🔮',
-            intel: '💾'
-        };
-        
-        let html = '<div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">';
-        for (const [res, amt] of Object.entries(player.resources)) {
-            if (amt > 0) {
-                const toDiscard = Math.floor(amt / 2);
-                html += `
-                    <div style="padding: 8px; background: rgba(244,67,54,0.1); border-radius: 6px; text-align: center;">
-                        <div>${resourceIcons[res]} ${res}</div>
-                        <div style="color: var(--accent-red); font-weight: bold;">${amt} → ${amt - toDiscard}</div>
-                    </div>
-                `;
-            }
-        }
-        html += '</div>';
-        discardOptions.innerHTML = html;
-        
-        log('❌ Defeat! Requirements not met.', 'danger');
-    }
-}
-
-window.claimRewards = function() {
-    const reward = combat.currentEncounter.reward;
-    const player = game.activePlayer;
-    
-    // Add equipment to hero
-    if (reward.equipment) {
-        player.hero.hand.push(reward.equipment);
-        log(`🎁 Gained equipment: ${reward.equipment.name}`, 'success');
-    }
-    
-    // Add resources
-    if (reward.resources) {
-        for (const [res, amt] of Object.entries(reward.resources)) {
-            player.resources[res] += amt;
-        }
-        log(`💎 Gained resources!`, 'success');
-    }
-    
-    closeCombatModal();
-    updateUI();
-    grid.render(game.map, null, game.players);
-};
-
-window.acceptDefeat = function() {
-    const player = game.activePlayer;
-    
-    // Halve resources
-    for (const res in player.resources) {
-        player.resources[res] = Math.floor(player.resources[res] / 2);
-    }
-    
-    // Call defeatHero
-    const defeatResult = game.defeatHero(player.id);
-    
-    if (defeatResult.eliminated) {
-        if (defeatResult.winner) {
-            log(`💀 ${player.name} eliminated! ${defeatResult.winner.name} wins!`, 'danger');
-            alert(`${defeatResult.winner.name} wins by elimination!`);
-            location.reload();
-            return;
-        } else {
-            log(`💀 ${player.name} eliminated after 3 defeats!`, 'danger');
-        }
-    } else {
-        log(`💀 Hero defeated! Respawning at nearest outpost (Inactive for 2 turns)`, 'danger');
-        log(`☠️ Death count: ${defeatResult.deathCount}/3`, 'warning');
-    }
-    
-    closeCombatModal();
-    updateUI();
-    grid.render(game.map, null, game.players);
-};
 
 function handleCanvasMouseMove(event) {
     const rect = event.target.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
-    const heroLoc = game.hero && game.hero.location ? game.hero.location : null;
+    const flat = isoView.isoToFlat(mouseX, mouseY);
 
-    // SETUP PHASE: Highlight tiles or edges based on step
+    // SETUP PHASE
     if (game.phase === 'setup') {
         const step = game.setupStep;
 
         if (step === 0 || step === 2) {
-            // Placing outpost - highlight tiles
-            const hex = grid.pixelToHex(mouseX, mouseY);
+            const hex = grid.pixelToHex(flat.x, flat.y);
             hoveredTile = hex;
-            hoveredEdge = null;
-            grid.render(game.map, hoveredTile, game.players, null);
+            isoView.render(game.map, hoveredTile, game.players, null);
         } else if (step === 1 || step === 3) {
-            // Placing hero - highlight edges
-            const edgeData = grid.getClosestEdge(mouseX, mouseY);
-            hoveredEdge = edgeData;
-            hoveredTile = null;
-            grid.render(game.map, null, game.players, hoveredEdge);
+            const edgeData = grid.getClosestEdge(flat.x, flat.y);
+            isoView.render(game.map, null, game.players, edgeData);
         }
         return;
     }
 
-    // BUILD MODE: Highlight tiles only
+    // BUILD MODE
     if (buildMode) {
-        const hex = grid.pixelToHex(mouseX, mouseY);
+        const hex = grid.pixelToHex(flat.x, flat.y);
         const tile = game.map.get(`${hex.q},${hex.r}`);
-
         if (tile && tile.revealed) {
-            hoveredTile = hex;
-            grid.render(game.map, hoveredTile, game.players, null);
+            isoView.render(game.map, hex, game.players, null);
         } else {
-            grid.render(game.map, null, game.players, null);
+            isoView.render(game.map, null, game.players, null);
         }
         return;
     }
 
-    // ACTION PHASE: Highlight edges for movement
+    // ACTION PHASE
     if (game.phase === 'action') {
-        const edgeData = grid.getClosestEdge(mouseX, mouseY);
-        hoveredEdge = edgeData;
-        hoveredTile = null;
-        grid.render(game.map, selectedHex, game.players, hoveredEdge);
+        const edgeData = grid.getClosestEdge(flat.x, flat.y);
+        isoView.render(game.map, selectedHex, game.players, edgeData);
         return;
     }
 
-    // PRODUCTION PHASE: No highlights
+    // PRODUCTION PHASE
     if (game.phase === 'production') {
-        grid.render(game.map, selectedHex, game.players, null);
+        isoView.render(game.map, selectedHex, game.players, null);
         return;
     }
 }
@@ -561,75 +336,34 @@ function handleCanvasClick(event) {
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
+    const flat = isoView.isoToFlat(mouseX, mouseY);
+
     console.log("Canvas clicked at:", mouseX, mouseY);
     console.log("Game phase:", game.phase);
     console.log("Setup outpost tile:", setupOutpostTile);
 
-    // ===== SETUP PHASE =====
+    // SETUP PHASE
     if (game.phase === 'setup') {
         const step = game.setupStep;
-
         if (step === 0 || step === 2) {
-            // Place Outpost
-            const hex = grid.pixelToHex(mouseX, mouseY);
+            const hex = grid.pixelToHex(flat.x, flat.y);
             const result = game.handleInitialPlacement(hex.q, hex.r, null);
-
             if (result.success) {
                 log(`🏠 ${game.activePlayer.name} placed an outpost!`, 'success');
-                
-                // Log exploration rewards
-                if (result.resourcesGained) {
-                    const items = [];
-                    for (const [res, amt] of Object.entries(result.resourcesGained)) {
-                        if (amt > 0) items.push(`${amt} ${res}`);
-                    }
-                    if (items.length > 0) {
-                        log(`💎 ${game.activePlayer.name} gained: ${items.join(', ')}`, 'success');
-                    }
-                }
-                
                 updateUI();
-                grid.render(game.map, null, game.players);
+                isoView.render(game.map, null, game.players);
             } else {
                 log(`❌ ${result.reason}`, 'warning');
             }
-        }
-        else if (step === 1 || step === 3) {
-            // Place Hero
-            const edgeData = grid.getClosestEdge(mouseX, mouseY);
+        } else if (step === 1 || step === 3) {
+            const edgeData = grid.getClosestEdge(flat.x, flat.y);
             const result = game.handleInitialPlacement(edgeData.q, edgeData.r, edgeData.edgeIndex);
-
             if (result.success) {
-                const placingPlayer = game.players[result.step === 'switch_player' ? 0 : game.activePlayerIndex];
-                
-                if (result.step === 'switch_player') {
-                    log(`🦸 ${game.players[0].name}'s hero placed!`, 'success');
-                } else if (result.step === 'setup_complete') {
-                    log(`🦸 ${game.players[1].name}'s hero placed!`, 'success');
-                } else {
-                    log(`🦸 ${game.activePlayer.name}'s hero placed!`, 'success');
-                }
-                
-                // Log exploration rewards for the placing player
-                if (result.resourcesGained) {
-                    const items = [];
-                    for (const [res, amt] of Object.entries(result.resourcesGained)) {
-                        if (amt > 0) items.push(`${amt} ${res}`);
-                    }
-                    if (items.length > 0) {
-                        log(`💎 ${placingPlayer.name} gained: ${items.join(', ')}`, 'success');
-                    }
-                }
-                
-                // Show post-switch messages
-                if (result.step === 'switch_player') {
-                    log(`➡️ Switching to ${game.activePlayer.name}...`, 'warning');
-                } else if (result.step === 'setup_complete') {
-                    log(`🎉 Setup complete! ${game.activePlayer.name} goes first. Click 'Roll Dice'!`, 'success');
-                }
-                
                 updateUI();
-                grid.render(game.map, null, game.players);
+                isoView.render(game.map, null, game.players);
+                if (result.step === 'setup_complete') {
+                    log(`🎉 Setup complete! ${game.activePlayer.name} goes first.`, 'success');
+                }
             } else {
                 log(`❌ ${result.reason}`, 'warning');
             }
@@ -637,19 +371,18 @@ function handleCanvasClick(event) {
         return;
     }
 
-
-    // ===== BUILD MODE (Tile clicks only) =====
+    // BUILD MODE
     if (buildMode) {
-        const hex = grid.pixelToHex(mouseX, mouseY);
+        const hex = grid.pixelToHex(flat.x, flat.y);
         selectedHex = hex;
-
         if (buildMode === 'outpost') {
             const result = game.buildOutpost(hex.q, hex.r);
             if (result.success) {
-                log(`🏠 Outpost built! +1 VP (Total: ${game.victoryPoints})`, 'success');
+                log(`🏠 Outpost built!`, 'success');
                 buildMode = null;
+                selectedHex = null;
                 document.body.style.cursor = 'default';
-                grid.render(game.map, null, game.players);
+                isoView.render(game.map, null, game.players);
                 updateUI();
             } else {
                 log(`❌ ${result.reason}`, 'warning');
@@ -657,10 +390,11 @@ function handleCanvasClick(event) {
         } else if (buildMode === 'fortress') {
             const result = game.upgradeToFortress(hex.q, hex.r);
             if (result.success) {
-                log(`🏰 Upgraded to Fortress! +1 VP (Total: ${game.victoryPoints})`, 'success');
+                log(`🏰 Upgraded to Fortress!`, 'success');
                 buildMode = null;
+                selectedHex = null;
                 document.body.style.cursor = 'default';
-                grid.render(game.map, null, game.players);
+                isoView.render(game.map, null, game.players);
                 updateUI();
             } else {
                 log(`❌ ${result.reason}`, 'warning');
@@ -669,87 +403,89 @@ function handleCanvasClick(event) {
         return;
     }
 
-    // ===== ACTION PHASE (Edge clicks for movement only) =====
+    // ACTION PHASE
     if (game.phase === 'action' && !buildMode) {
-        // Check if hero is inactive or player is eliminated
-        if (game.activePlayer.hero.inactiveTurns > 0) {
-            log(`❌ Your hero is inactive for ${game.activePlayer.hero.inactiveTurns} more turn(s)`, 'warning');
-            return;
-        }
-        
-        if (game.activePlayer.eliminated) {
-            log(`❌ You have been eliminated from the game`, 'danger');
-            return;
-        }
-        
-        const edgeData = grid.getClosestEdge(mouseX, mouseY);
+        const edgeData = grid.getClosestEdge(flat.x, flat.y);
         const mid = grid.getEdgeMidpoint(edgeData.q, edgeData.r, edgeData.edgeIndex);
-        const dist = Math.sqrt(Math.pow(mouseX - mid.x, 2) + Math.pow(mouseY - mid.y, 2));
+        // Distance check needs flat coords too? No, distance visual.
+        // Wait, visual distance in isometric is tricky. 
+        // If we use flat distance, it's more consistent with logic.
+        const dist = Math.sqrt(Math.pow(flat.x - mid.x, 2) + Math.pow(flat.y - mid.y, 2));
 
-        // Threshold for edge click (40px)
         if (dist < 40) {
-            // Attempt move
             const result = game.moveHero(edgeData.q, edgeData.r, edgeData.edgeIndex);
             if (result.success) {
-                if (result.movedToOutpost) {
-                    log("🏃 Hero moved to outpost edge (FREE)!", 'success');
-                } else {
-                    log("🏃 Hero moved! (-2 Fuel)", 'success');
-                }
-                
-                // Log newly revealed tiles
-                if (result.encounters && result.encounters.length > 0) {
-                    result.encounters.forEach((enc, idx) => {
-                        const tile = enc.tile;
-                        log(`🗺️ Revealed: ${tile.type} (${tile.q}, ${tile.r}) with token ${tile.numberToken}`, 'success');
-                    });
-                }
-                
-                // Log exploration rewards
-                if (result.resourcesGained) {
-                    const items = [];
-                    for (const [res, amt] of Object.entries(result.resourcesGained)) {
-                        if (amt > 0) items.push(`${amt} ${res}`);
-                    }
-                    if (items.length > 0) {
-                        log(`💎 Exploration reward: ${items.join(', ')}`, 'success');
-                    }
-                }
+                if (result.movedToOutpost) log("🏃 Hero moved to outpost edge (FREE)!", 'success');
+                else log("🏃 Hero moved! (-2 Fuel)", 'success');
                 
                 updateUI();
-                grid.render(game.map, selectedHex, game.players);
+                isoView.render(game.map, selectedHex, game.players);
 
-                // Handle Encounters with slight delay to show tile reveal
                 if (result.encounters && result.encounters.length > 0) {
                     setTimeout(() => {
                         const encounter = result.encounters[0];
-                        const card = encounter.card;
-                        
-                        // Handle combat encounters (All encounters are now combat/interactive)
                         const encounterData = {
                             tile: encounter.tile,
-                            encounterCard: card
+                            encounterCard: encounter.card
                         };
-                        log(`⚠️ Encounter: ${card.enemy?.name || card.title || 'Enemy'}`, 'warning');
-                        showCombatModal(encounterData);
+                        log(`⚠️ Encounter: ${encounter.card.title}`, 'warning');
+                        combatUI.show(encounterData);
                     }, 500);
                 }
             } else {
                 log(`❌ ${result.reason}`, 'warning');
             }
-            return;
         } else {
             log("❌ Click closer to an edge to move", 'warning');
         }
         return;
     }
-
-    // ===== PRODUCTION PHASE (No clicks allowed) =====
-    if (game.phase === 'production') {
-        log("❌ Roll dice first to enter action phase", 'warning');
-        return;
-    }
 }
+
+// Global functions
+window.claimRewards = function() {
+    const reward = combat.currentEncounter.reward;
+    const player = game.activePlayer;
+    
+    if (reward.equipment) {
+        player.hero.hand.push(reward.equipment);
+        log(`🎁 Gained equipment: ${reward.equipment.name}`, 'success');
+    }
+    if (reward.resources) {
+        for (const [res, amt] of Object.entries(reward.resources)) {
+            player.resources[res] += amt;
+        }
+        log(`💎 Gained resources!`, 'success');
+    }
+    
+    combatUI.close();
+    updateUI();
+    isoView.render(game.map, null, game.players);
+};
+
+window.acceptDefeat = function() {
+    const player = game.activePlayer;
+    for (const res in player.resources) {
+        player.resources[res] = Math.floor(player.resources[res] / 2);
+    }
+    const defeatResult = game.defeatHero(player.id);
+    if (defeatResult.eliminated) {
+        log(`💀 ${player.name} eliminated!`, 'danger');
+        if (defeatResult.winner) {
+             alert(`${defeatResult.winner.name} wins by elimination!`);
+             location.reload();
+        }
+    } else {
+        log(`💀 Hero defeated! Respawning...`, 'danger');
+    }
+    
+    combatUI.close();
+    updateUI();
+    isoView.render(game.map, null, game.players);
+};
+
+window.log = log;
+window.updateUI = updateUI;
 
 // ...
 
@@ -900,46 +636,90 @@ function log(msg, type = '') {
 // Add CSS for combat dice
 const style = document.createElement('style');
 style.textContent = `
-    .dice-container {
+    .player-dice {
         display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
+        gap: 15px;
         justify-content: center;
+        margin-bottom: 20px;
     }
-    .combat-die {
-        width: 50px;
-        height: 50px;
-        border-radius: 8px;
+    .dice-item {
+        width: 70px;
+        height: 70px;
+        border-radius: 12px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         color: white;
         font-weight: bold;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+        position: relative;
+        transition: transform 0.2s;
+        background: #333;
     }
-    .die-value {
-        font-size: 1.5rem;
+    .dice-item.rolling {
+        animation: roll 0.3s infinite linear;
     }
-    .die-number {
-        font-size: 0.8rem;
+    .dice-item.tactics { background: linear-gradient(135deg, #e91e63, #c2185b); }
+    .dice-item.strength { background: linear-gradient(135deg, #ff9800, #f57c00); }
+    .dice-item.tech { background: linear-gradient(135deg, #2196f3, #1976d2); }
+    
+    .dice-icon { font-size: 1.4em; margin-bottom: 2px; }
+    .dice-value { font-size: 1.6em; line-height: 1; }
+    .dice-label { font-size: 0.6em; text-transform: uppercase; opacity: 0.9; margin-top: 2px; }
+
+    /* Result Styles */
+    .result-banner {
+        font-size: 2.5em;
+        font-weight: 800;
+        text-align: center;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
+    .result-banner.victory {
+        background: linear-gradient(135deg, #43a047, #66bb6a);
+        color: white;
+        box-shadow: 0 0 25px rgba(76, 175, 80, 0.6);
+        border: 2px solid #81c784;
+    }
+    .result-banner.defeat {
+        background: linear-gradient(135deg, #d32f2f, #ef5350);
+        color: white;
+        box-shadow: 0 0 25px rgba(244, 67, 54, 0.6);
+        border: 2px solid #e57373;
+    }
+    .result-message {
+        text-align: center;
+        font-size: 1.3em;
+        color: #f0f0f0;
+        margin-bottom: 30px;
+        line-height: 1.6;
+        font-weight: 300;
+    }
+    
+    @keyframes roll {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(5deg); }
+        75% { transform: rotate(-5deg); }
+        100% { transform: rotate(0deg); }
+    }
+    @keyframes popIn {
+        0% { transform: scale(0.5); opacity: 0; }
+        70% { transform: scale(1.1); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
     .enemy-card {
         text-align: center;
         padding: 15px;
         background: rgba(244, 67, 54, 0.1);
         border: 2px solid #f44336;
         border-radius: 8px;
-    }
-    .enemy-stats {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin: 10px 0;
-    }
-    .enemy-reward {
-        margin-top: 10px;
-        color: #ffd700;
     }
 `;
 document.head.appendChild(style);

@@ -4,7 +4,7 @@ export class HexGrid {
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = width;
         this.canvas.height = height;
-        this.hexSize = 45;
+        this.hexSize = 60;
         this.tiles = new Map();
         this.offsetX = width / 2;
         this.offsetY = height / 2;
@@ -159,16 +159,9 @@ export class HexGrid {
 
         // Type label
         ctx.fillStyle = "#fff";
-        ctx.font = "10px Arial";
+        ctx.font = "8px Arial"; // Smaller font
         ctx.textAlign = "center";
-        ctx.fillText(tileData.type.toUpperCase(), x, y + 26);
-
-        // Level indicator
-        if (tileData.level !== undefined && tileData.level !== null && tileData.level > 0) {
-            ctx.fillStyle = "#ffd700";
-            ctx.font = "bold 11px Arial";
-            ctx.fillText(`Lvl ${tileData.level}`, x, y - 26);
-        }
+        ctx.fillText(tileData.type.toUpperCase(), x, y + 22); // Adjusted position
     }
 
     getTileColor(type) {
