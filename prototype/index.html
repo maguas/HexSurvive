@@ -21,13 +21,6 @@
             </div>
 
             <div class="panel">
-                <h2>🎲 Turn <span id="turn-counter">1</span></h2>
-                <div class="phase-indicator">
-                    Phase: <span id="phase-display">Production</span>
-                </div>
-            </div>
-
-            <div class="panel">
                 <h2>📦 Resources</h2>
                 <div id="resource-display">
                     <div class="resource-item">
@@ -61,7 +54,14 @@
             <div class="panel">
                 <h2>⚡ Actions</h2>
                 <button id="btn-roll-dice" class="action-btn primary">🎲 Roll Dice</button>
-                <!-- <button id="btn-explore" class="action-btn" title="Select a fog tile then click">🔍 Explore Mode</button> -->
+                <button id="btn-move" class="action-btn">
+                    <span class="btn-label">🏃 Move</span>
+                    <span class="btn-cost" data-cost-key="moveHero"></span>
+                </button>
+                <button id="btn-extract" class="action-btn">
+                    <span class="btn-label">⛏️ Extract</span>
+                    <span class="btn-cost" data-cost-key="extract"></span>
+                </button>
                 <button id="btn-build-outpost" class="action-btn">
                     <span class="btn-label">🏠 Build Outpost</span>
                     <span class="btn-cost" data-cost-key="buildOutpost"></span>
@@ -70,7 +70,6 @@
                     <span class="btn-label">🏰 Upgrade Fortress</span>
                     <span class="btn-cost" data-cost-key="upgradeFortress"></span>
                 </button>
-                <!-- <button id="btn-train" class="action-btn">📚 Train Hero</button> -->
                 <button id="btn-end-turn" class="action-btn">⏭️ End Turn</button>
             </div>
         </aside>
@@ -131,6 +130,31 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Encounter Level Selection Modal -->
+            <div id="level-select-modal" class="modal hidden">
+                <div class="modal-content level-select-content">
+                    <h2>⚠️ ENCOUNTER REVEALED</h2>
+                    <p>Choose the difficulty level for this encounter:</p>
+                    <div class="level-buttons">
+                        <button class="level-btn level-1" onclick="selectEncounterLevel(1)">
+                            <span class="level-number">1</span>
+                            <span class="level-label">Easy</span>
+                            <span class="level-vp">+1 VP</span>
+                        </button>
+                        <button class="level-btn level-2" onclick="selectEncounterLevel(2)">
+                            <span class="level-number">2</span>
+                            <span class="level-label">Medium</span>
+                            <span class="level-vp">+2 VP</span>
+                        </button>
+                        <button class="level-btn level-3" onclick="selectEncounterLevel(3)">
+                            <span class="level-number">3</span>
+                            <span class="level-label">Hard</span>
+                            <span class="level-vp">+3 VP</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- RIGHT SIDEBAR: Hero & Log -->
@@ -153,24 +177,33 @@
                     <div class="hero-stats">
                         <div class="stat-item stat-tac">
                             <span class="stat-label">Tactics</span>
-                            <span id="stat-tac" class="stat-value">1</span>
+                            <span id="stat-tac" class="stat-value">0</span>
                         </div>
                         <div class="stat-item stat-str">
                             <span class="stat-label">Strength</span>
-                            <span id="stat-str" class="stat-value">1</span>
+                            <span id="stat-str" class="stat-value">0</span>
                         </div>
                         <div class="stat-item stat-tech">
                             <span class="stat-label">Tech</span>
-                            <span id="stat-tech" class="stat-value">1</span>
+                            <span id="stat-tech" class="stat-value">0</span>
                         </div>
                     </div>
                     <div class="hero-gear">
                         <h3>Equipment</h3>
-                        <div class="gear-item">🪖 Head: <span id="gear-head">-</span></div>
-                        <div class="gear-item">🦺 Body: <span id="gear-body">-</span></div>
+                        <div class="gear-item">🦺 Suit: <span id="gear-suit">-</span></div>
                         <div class="gear-item">🔫 Weapon: <span id="gear-weapon">-</span></div>
-                        <div class="gear-item">📡 Tech: <span id="gear-tech">-</span></div>
                     </div>
+                    <div class="hero-grit">
+                        <span class="grit-label">⚫ Grit Tokens:</span>
+                        <span id="grit-count" class="grit-value">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🎲 Turn <span id="turn-counter">1</span></h2>
+                <div class="phase-indicator">
+                    Phase: <span id="phase-display">Production</span>
                 </div>
             </div>
 

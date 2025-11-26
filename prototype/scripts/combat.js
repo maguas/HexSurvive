@@ -9,14 +9,10 @@ export class CombatSystem {
     initiateCombat(encounterCard) {
         this.currentEncounter = encounterCard;
         this.result = null;
-
-        // Roll hero dice based on stats
-        const hero = this.game.hero; // Changed from playerHero to hero
-        this.playerDice = this.rollHeroDice(hero);
+        this.playerDice = [];
 
         return {
-            enemy: this.currentEncounter.enemy, // Access enemy data from card
-            playerDice: this.playerDice
+            enemy: this.currentEncounter.enemy
         };
     }
 
@@ -92,45 +88,44 @@ export class CombatSystem {
     rollHeroDice(hero) {
         const dice = [];
         
+        // Calculate total stat bonuses (base + gear)
         let tactics = hero.stats.tactics;
         let strength = hero.stats.strength;
         let tech = hero.stats.tech;
 
         // Add gear bonuses
-        if (hero.hand) {
-            hero.hand.forEach(item => {
-                if (item.tactics) tactics += item.tactics;
-                if (item.strength) strength += item.strength;
-                if (item.tech) tech += item.tech;
+        if (hero.gear) {
+            ['suit', 'weapon'].forEach(slot => {
+                const item = hero.gear[slot];
+                if (item) {
+                    if (item.tactics) tactics += item.tactics;
+                    if (item.strength) strength += item.strength;
+                    if (item.tech) tech += item.tech;
+                }
             });
         }
 
-        // Roll Tactics dice (Yellow)
-        for (let i = 0; i < tactics; i++) {
-            dice.push({
-                type: 'tac',
-                value: Math.floor(Math.random() * 6) + 1,
-                color: '#ffd700'
-            });
-        }
+        // Roll 1 die per stat type, add stat bonus to result
+        // Tactics die (Yellow) - 1d6 + tactics bonus
+        dice.push({
+            type: 'tac',
+            value: Math.floor(Math.random() * 6) + 1 + tactics,
+            color: '#FFD700'
+        });
 
-        // Roll Strength dice (Red)
-        for (let i = 0; i < strength; i++) {
-            dice.push({
-                type: 'str',
-                value: Math.floor(Math.random() * 6) + 1,
-                color: '#f44336'
-            });
-        }
+        // Strength die (Red) - 1d6 + strength bonus
+        dice.push({
+            type: 'str',
+            value: Math.floor(Math.random() * 6) + 1 + strength,
+            color: '#F44336'
+        });
 
-        // Roll Tech dice (Blue)
-        for (let i = 0; i < tech; i++) {
-            dice.push({
-                type: 'tech',
-                value: Math.floor(Math.random() * 6) + 1,
-                color: '#40c4ff'
-            });
-        }
+        // Tech die (Blue) - 1d6 + tech bonus
+        dice.push({
+            type: 'tech',
+            value: Math.floor(Math.random() * 6) + 1 + tech,
+            color: '#40C4FF'
+        });
 
         return dice;
     }

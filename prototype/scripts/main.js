@@ -17,9 +17,12 @@ let selectedHex = null;
 let hoveredTile = null;
 let hoveredEdge = null;
 let buildMode = null; // 'outpost' or 'fortress' or null
+let moveMode = false; // Track if move mode is active
 let setupOutpostTile = null; // Track where outpost was placed
 
 const ACTION_BUTTON_CONFIG = [
+    { id: 'btn-move', costKey: 'moveHero', requiredPhase: 'action', condition: () => !game.activePlayer.extractedThisTurn },
+    { id: 'btn-extract', costKey: 'extract', requiredPhase: 'action', condition: () => !game.activePlayer.movedThisTurn && !game.activePlayer.extractedThisTurn },
     { id: 'btn-build-outpost', costKey: 'buildOutpost', requiredPhase: 'action' },
     { id: 'btn-upgrade-fortress', costKey: 'upgradeFortress', requiredPhase: 'action' }
 ];
@@ -56,8 +59,10 @@ function init() {
 
     // Event Listeners
     document.getElementById('btn-roll-dice').addEventListener('click', handleRollDice);
+    document.getElementById('btn-move').addEventListener('click', handleMove);
     document.getElementById('btn-build-outpost').addEventListener('click', handleBuildOutpost);
     document.getElementById('btn-upgrade-fortress').addEventListener('click', handleUpgradeFortress);
+    document.getElementById('btn-extract').addEventListener('click', handleExtract);
     document.getElementById('btn-end-turn').addEventListener('click', handleEndTurn);
 
     // Canvas interaction
@@ -90,6 +95,9 @@ function updateUI() {
 
     // Victory Points
     document.getElementById('vp-count').textContent = game.victoryPoints;
+
+    // Grit Tokens
+    document.getElementById('grit-count').textContent = game.activePlayer.gritTokens;
 
     // Turn and Phase
     document.getElementById('turn-counter').textContent = game.turn;
@@ -151,10 +159,14 @@ function updateUI() {
         tech: hero.stats.tech
     };
 
-    hero.hand.forEach(item => {
-        if (item.tactics) totalStats.tactics += item.tactics;
-        if (item.strength) totalStats.strength += item.strength;
-        if (item.tech) totalStats.tech += item.tech;
+    // Add gear bonuses
+    ['suit', 'weapon'].forEach(slot => {
+        const item = hero.gear[slot];
+        if (item) {
+            if (item.tactics) totalStats.tactics += item.tactics;
+            if (item.strength) totalStats.strength += item.strength;
+            if (item.tech) totalStats.tech += item.tech;
+        }
     });
 
     // Update stats display
@@ -162,23 +174,20 @@ function updateUI() {
     document.getElementById('stat-str').textContent = totalStats.strength;
     document.getElementById('stat-tech').textContent = totalStats.tech;
 
-    // Reset Gear Slots
-    ['head', 'body', 'weapon', 'tech'].forEach(slot => {
-        const el = document.getElementById(`gear-${slot}`);
-        if (el) el.textContent = '-';
-    });
-
     // Update Gear Display
-    hero.hand.forEach(item => {
-        if (item.slot) {
-            const el = document.getElementById(`gear-${item.slot}`);
-            if (el) {
-                const stats = [];
-                if (item.tactics) stats.push(`+${item.tactics} Tac`);
-                if (item.strength) stats.push(`+${item.strength} Str`);
-                if (item.tech) stats.push(`+${item.tech} Tech`);
-                el.textContent = `${item.name} (${stats.join(', ')})`;
-            }
+    ['suit', 'weapon'].forEach(slot => {
+        const el = document.getElementById(`gear-${slot}`);
+        if (!el) return;
+        
+        const item = hero.gear[slot];
+        if (item) {
+            const stats = [];
+            if (item.tactics) stats.push(`+${item.tactics} Tac`);
+            if (item.strength) stats.push(`+${item.strength} Str`);
+            if (item.tech) stats.push(`+${item.tech} Tech`);
+            el.textContent = `${item.name} (${stats.join(', ')})`;
+        } else {
+            el.textContent = '-';
         }
     });
 
@@ -193,15 +202,16 @@ function updateUI() {
 }
 
 function updateButtonStates() {
-    ACTION_BUTTON_CONFIG.forEach(({ id, costKey, requiredPhase }) => {
+    ACTION_BUTTON_CONFIG.forEach(({ id, costKey, requiredPhase, condition }) => {
         const button = document.getElementById(id);
         if (!button) return;
 
         const phaseAllowed = !requiredPhase || game.phase === requiredPhase;
         const cost = ACTION_COSTS[costKey];
         const affordable = canAfford(game.resources, cost);
+        const conditionMet = condition ? condition() : true;
 
-        button.disabled = !(phaseAllowed && affordable);
+        button.disabled = !(phaseAllowed && affordable && conditionMet);
     });
     
     // Roll Dice - only in production phase
@@ -222,6 +232,15 @@ function handleRollDice() {
         return;
     }
 
+    // Passive income at start of turn (before dice roll)
+    const passiveIncome = game.gatherPassiveIncome();
+    if (passiveIncome.fuel > 0 || passiveIncome.food > 0) {
+        const items = [];
+        if (passiveIncome.fuel > 0) items.push(`${passiveIncome.fuel} fuel`);
+        if (passiveIncome.food > 0) items.push(`${passiveIncome.food} food`);
+        log(`🏠 ${game.activePlayer.name} gained: ${items.join(', ')} (outpost passive)`, 'success');
+    }
+
     const roll = game.rollDice();
     log(`🎲 Rolled: ${roll.d1} + ${roll.d2} = ${roll.total}`);
 
@@ -229,10 +248,13 @@ function handleRollDice() {
         const invasionResult = game.handleInvasion();
         log(`⚠️ INVASION! Threat Level: ${invasionResult.threatLevel}`, 'danger');
 
-        if (invasionResult.discarded) {
-            const total = Object.values(invasionResult.discarded).reduce((a, b) => a + b, 0);
-            if (total > 0) {
-                log(`💀 Discarded ${total} resources!`, 'danger');
+        if (invasionResult.discardedByPlayer) {
+            for (const [playerId, discarded] of Object.entries(invasionResult.discardedByPlayer)) {
+                const total = Object.values(discarded).reduce((a, b) => a + b, 0);
+                if (total > 0) {
+                    const player = game.players.find(p => p.id == playerId);
+                    log(`💀 ${player ? player.name : 'Player'} discarded ${total} resources!`, 'danger');
+                }
             }
         }
 
@@ -247,7 +269,7 @@ function handleRollDice() {
                     if (amt > 0) items.push(`${amt} ${res}`);
                 }
                 if (items.length > 0) {
-                    log(`📦 ${player.name} gained: ${items.join(', ')}`, 'success');
+                    log(`📦 ${player.name} gained: ${items.join(', ')} (dice roll: ${roll.total})`, 'success');
                 }
             });
         }
@@ -259,11 +281,12 @@ function handleRollDice() {
 }
 
 function handleEndTurn() {
+    // Reset modes
+    moveMode = false;
+    buildMode = null;
+    document.body.style.cursor = 'default';
+    
     const result = game.endTurn();
-
-    // Passive resource income at start of turn (per player)
-    // Already handled in game_manager but we log it here if needed or rely on UI update
-    // Actually game_manager handles the addition.
     
     log(`--- Turn ${game.turn} ---`);
     log(`👉 Next Player: ${result.nextPlayer}`);
@@ -317,10 +340,16 @@ function handleCanvasMouseMove(event) {
         return;
     }
 
-    // ACTION PHASE
-    if (game.phase === 'action') {
+    // MOVE MODE - show edge highlights
+    if (moveMode) {
         const edgeData = grid.getClosestEdge(flat.x, flat.y);
         isoView.render(game.map, selectedHex, game.players, edgeData);
+        return;
+    }
+
+    // ACTION PHASE (no special mode)
+    if (game.phase === 'action') {
+        isoView.render(game.map, selectedHex, game.players, null);
         return;
     }
 
@@ -345,11 +374,23 @@ function handleCanvasClick(event) {
     // SETUP PHASE
     if (game.phase === 'setup') {
         const step = game.setupStep;
+        const currentPlayerName = game.activePlayer.name; // Capture before placement (may switch player)
+        
         if (step === 0 || step === 2) {
             const hex = grid.pixelToHex(flat.x, flat.y);
             const result = game.handleInitialPlacement(hex.q, hex.r, null);
             if (result.success) {
-                log(`🏠 ${game.activePlayer.name} placed an outpost!`, 'success');
+                log(`🏠 ${currentPlayerName} placed an outpost!`, 'success');
+                // Log resources gained from initial placement
+                if (result.resourcesGained) {
+                    const items = [];
+                    for (const [res, amt] of Object.entries(result.resourcesGained)) {
+                        if (amt > 0) items.push(`${amt} ${res}`);
+                    }
+                    if (items.length > 0) {
+                        log(`📦 ${currentPlayerName} gained: ${items.join(', ')} (tile bonus)`, 'success');
+                    }
+                }
                 updateUI();
                 isoView.render(game.map, null, game.players);
             } else {
@@ -359,6 +400,16 @@ function handleCanvasClick(event) {
             const edgeData = grid.getClosestEdge(flat.x, flat.y);
             const result = game.handleInitialPlacement(edgeData.q, edgeData.r, edgeData.edgeIndex);
             if (result.success) {
+                // Log resources gained from newly revealed tiles
+                if (result.resourcesGained) {
+                    const items = [];
+                    for (const [res, amt] of Object.entries(result.resourcesGained)) {
+                        if (amt > 0) items.push(`${amt} ${res}`);
+                    }
+                    if (items.length > 0) {
+                        log(`📦 ${currentPlayerName} gained: ${items.join(', ')} (exploration)`, 'success');
+                    }
+                }
                 updateUI();
                 isoView.render(game.map, null, game.players);
                 if (result.step === 'setup_complete') {
@@ -403,13 +454,10 @@ function handleCanvasClick(event) {
         return;
     }
 
-    // ACTION PHASE
-    if (game.phase === 'action' && !buildMode) {
+    // ACTION PHASE - MOVE MODE
+    if (game.phase === 'action' && moveMode) {
         const edgeData = grid.getClosestEdge(flat.x, flat.y);
         const mid = grid.getEdgeMidpoint(edgeData.q, edgeData.r, edgeData.edgeIndex);
-        // Distance check needs flat coords too? No, distance visual.
-        // Wait, visual distance in isometric is tricky. 
-        // If we use flat distance, it's more consistent with logic.
         const dist = Math.sqrt(Math.pow(flat.x - mid.x, 2) + Math.pow(flat.y - mid.y, 2));
 
         if (dist < 40) {
@@ -418,18 +466,24 @@ function handleCanvasClick(event) {
                 if (result.movedToOutpost) log("🏃 Hero moved to outpost edge (FREE)!", 'success');
                 else log("🏃 Hero moved! (-2 Fuel)", 'success');
                 
+                // Log resources gained from newly revealed tiles
+                if (result.resourcesGained) {
+                    const items = [];
+                    for (const [res, amt] of Object.entries(result.resourcesGained)) {
+                        if (amt > 0) items.push(`${amt} ${res}`);
+                    }
+                    if (items.length > 0) {
+                        log(`📦 ${game.activePlayer.name} gained: ${items.join(', ')} (exploration)`, 'success');
+                    }
+                }
+                
                 updateUI();
                 isoView.render(game.map, selectedHex, game.players);
 
-                if (result.encounters && result.encounters.length > 0) {
+                if (result.pendingEncounterTiles && result.pendingEncounterTiles.length > 0) {
                     setTimeout(() => {
-                        const encounter = result.encounters[0];
-                        const encounterData = {
-                            tile: encounter.tile,
-                            encounterCard: encounter.card
-                        };
-                        log(`⚠️ Encounter: ${encounter.card.title}`, 'warning');
-                        combatUI.show(encounterData);
+                        const tile = result.pendingEncounterTiles[0];
+                        showEncounterLevelSelection(tile);
                     }, 500);
                 }
             } else {
@@ -442,20 +496,54 @@ function handleCanvasClick(event) {
     }
 }
 
+// Encounter level selection
+let pendingEncounterTile = null;
+
+function showEncounterLevelSelection(tile) {
+    pendingEncounterTile = tile;
+    const modal = document.getElementById('level-select-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+window.selectEncounterLevel = function(level) {
+    if (!pendingEncounterTile) return;
+    
+    const encounter = game.drawEncounterForTile(pendingEncounterTile, level);
+    const modal = document.getElementById('level-select-modal');
+    if (modal) modal.classList.add('hidden');
+    
+    log(`⚠️ Level ${level} Encounter: ${encounter.card.title}`, 'warning');
+    combatUI.show({
+        tile: encounter.tile,
+        encounterCard: encounter.card
+    });
+    
+    pendingEncounterTile = null;
+};
+
 // Global functions
 window.claimRewards = function() {
     const reward = combat.currentEncounter.reward;
     const player = game.activePlayer;
+    const encounterLevel = combat.currentEncounter.tile?.encounterLevel || 1;
+    
+    // Award victory points equal to encounter level
+    player.victoryPoints += encounterLevel;
+    log(`🏆 +${encounterLevel} Victory Point${encounterLevel > 1 ? 's' : ''} (Level ${encounterLevel} encounter)`, 'success');
     
     if (reward.equipment) {
-        player.hero.hand.push(reward.equipment);
-        log(`🎁 Gained equipment: ${reward.equipment.name}`, 'success');
+        game.equipGear(reward.equipment);
+        log(`🎁 Equipped: ${reward.equipment.name} (${reward.equipment.slot})`, 'success');
     }
     if (reward.resources) {
+        const items = [];
         for (const [res, amt] of Object.entries(reward.resources)) {
             player.resources[res] += amt;
+            if (amt > 0) items.push(`${amt} ${res}`);
         }
-        log(`💎 Gained resources!`, 'success');
+        log(`💎 ${player.name} gained: ${items.join(', ')} (combat reward)`, 'success');
     }
     
     combatUI.close();
@@ -468,6 +556,11 @@ window.acceptDefeat = function() {
     for (const res in player.resources) {
         player.resources[res] = Math.floor(player.resources[res] / 2);
     }
+    
+    // Award 2 grit tokens on defeat
+    player.gritTokens += 2;
+    log(`⚫ +2 Grit Tokens (defeat bonus)`, 'info');
+    
     const defeatResult = game.defeatHero(player.id);
     if (defeatResult.eliminated) {
         log(`💀 ${player.name} eliminated!`, 'danger');
@@ -476,7 +569,7 @@ window.acceptDefeat = function() {
              location.reload();
         }
     } else {
-        log(`💀 Hero defeated! Respawning...`, 'danger');
+        log(`💀 Hero defeated!`, 'danger');
     }
     
     combatUI.close();
@@ -486,8 +579,33 @@ window.acceptDefeat = function() {
 
 window.log = log;
 window.updateUI = updateUI;
+window.combatUI = combatUI; // Expose for grit spending UI
 
 // ...
+
+function handleMove() {
+    if (game.phase !== 'action') {
+        log("❌ Can only move during action phase", 'warning');
+        return;
+    }
+
+    if (game.activePlayer.extractedThisTurn) {
+        log("❌ Cannot move after extracting this turn", 'warning');
+        return;
+    }
+
+    moveMode = !moveMode; // Toggle move mode
+    buildMode = null; // Cancel build mode if active
+    
+    if (moveMode) {
+        document.body.style.cursor = 'crosshair';
+        log("🏃 Move mode: Click an adjacent edge to move your hero", 'warning');
+    } else {
+        document.body.style.cursor = 'default';
+        log("Move mode cancelled", 'info');
+    }
+    isoView.render(game.map, selectedHex, game.players, null);
+}
 
 function handleBuildOutpost() {
     if (game.phase !== 'action') {
@@ -495,6 +613,7 @@ function handleBuildOutpost() {
         return;
     }
 
+    moveMode = false; // Cancel move mode if active
     buildMode = 'outpost';
     document.body.style.cursor = 'crosshair';
     log("🏠 Build Outpost mode: Click a revealed tile adjacent to your hero", 'warning');
@@ -506,9 +625,24 @@ function handleUpgradeFortress() {
         return;
     }
 
+    moveMode = false; // Cancel move mode if active
     buildMode = 'fortress';
     document.body.style.cursor = 'crosshair';
     log("🏰 Upgrade Fortress mode: Click an existing outpost to upgrade", 'warning');
+}
+
+function handleExtract() {
+    const result = game.extractResources();
+    if (result.success) {
+        const items = [];
+        for (const [res, amt] of Object.entries(result.gains)) {
+            if (amt > 0) items.push(`${amt} ${res}`);
+        }
+        log(`⛏️ Extracted resources: ${items.join(', ')}`, 'success');
+        updateUI();
+    } else {
+        log(`❌ ${result.reason}`, 'warning');
+    }
 }
 
 function showCombatModal(encounter) {
@@ -660,9 +794,9 @@ style.textContent = `
     .dice-item.rolling {
         animation: roll 0.3s infinite linear;
     }
-    .dice-item.tactics { background: linear-gradient(135deg, #e91e63, #c2185b); }
-    .dice-item.strength { background: linear-gradient(135deg, #ff9800, #f57c00); }
-    .dice-item.tech { background: linear-gradient(135deg, #2196f3, #1976d2); }
+    .dice-item.tactics { background: linear-gradient(135deg, #FFD700, #FFA000); }
+    .dice-item.strength { background: linear-gradient(135deg, #F44336, #C62828); }
+    .dice-item.tech { background: linear-gradient(135deg, #40C4FF, #0288D1); }
     
     .dice-icon { font-size: 1.4em; margin-bottom: 2px; }
     .dice-value { font-size: 1.6em; line-height: 1; }

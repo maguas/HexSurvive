@@ -35,7 +35,7 @@ export class GameManager {
             color,
             resources: {
                 scrap: 0,
-                fuel: 1,
+                fuel: 0,
                 food: 0,
                 alloy: 0,
                 intel: 0
@@ -43,18 +43,24 @@ export class GameManager {
             hero: {
                 location: null,
                 stats: {
-                    tactics: 1,
-                    strength: 1,
-                    tech: 1
+                    tactics: 0,
+                    strength: 0,
+                    tech: 0
                 },
                 health: 3,
                 inactiveTurns: 0,  // Tracks turns hero is inactive after defeat
                 deathCount: 0,      // Tracks total defeats (eliminate at 3)
-                hand: []            // Equipped items
+                gear: {             // Equipped items by slot
+                    suit: null,
+                    weapon: null
+                }
             },
             victoryPoints: 0,
+            gritTokens: 0,           // Earned on defeat (2 per defeat), spend to boost dice
             eliminated: false,       // Player eliminated after 3 defeats
-            encountersResolved: 0    // Track encounters per turn
+            encountersResolved: 0,   // Track encounters per turn
+            extractedThisTurn: false, // Track extraction action (cannot move after extracting)
+            movedThisTurn: false      // Track movement action (cannot extract after moving)
         };
     }
 
@@ -106,11 +112,6 @@ export class GameManager {
 
                 const distanceFromCenter = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
                 
-                // Assign encounter level based on distance from center
-                let encounterLevel = 1;
-                if (distanceFromCenter >= 3) encounterLevel = 3;
-                else if (distanceFromCenter >= 2) encounterLevel = 2;
-                
                 this.map.set(`${q},${r}`, {
                     type: type,
                     revealed: false, // All start hidden
@@ -118,8 +119,7 @@ export class GameManager {
                     r: r,
                     numberToken: null,
                     outpost: false,
-                    encounterLevel: encounterLevel, // 1, 2, or 3 based on distance
-                    level: distanceFromCenter // Distance from center (keep for compatibility)
+                    level: distanceFromCenter // Distance from center
                 });
             }
         }
@@ -282,15 +282,7 @@ export class GameManager {
         if (this.map.has(key1)) {
             const tile = this.map.get(key1);
             
-            // Always grant resource if tile is revealed (even if already revealed)
-            const resourceType = this.getTileResourceType(tile.type);
-            if (resourceType && tile.revealed) {
-                console.log(`💰 ${this.activePlayer.name} adjacent to revealed ${tile.type} - gaining 1 ${resourceType}`);
-                this.activePlayer.resources[resourceType] += 1;
-                resourcesGained[resourceType] += 1;
-            }
-            
-            // If not yet revealed, reveal it and give token
+            // If not yet revealed, reveal it and give token + resource
             if (!tile.revealed) {
                 tile.revealed = true;
                 if (tile.type !== 'barren') {
@@ -298,6 +290,13 @@ export class GameManager {
                 }
                 console.log(`📍 Revealed tile at (${q}, ${r}): ${tile.type} with token ${tile.numberToken}`);
                 newlyRevealed.push(tile);
+                
+                // Grant 1 resource from newly revealed tile
+                const resourceType = this.getTileResourceType(tile.type);
+                if (resourceType) {
+                    this.activePlayer.resources[resourceType] += 1;
+                    resourcesGained[resourceType] += 1;
+                }
             }
         }
 
@@ -307,15 +306,7 @@ export class GameManager {
         if (this.map.has(key2)) {
             const tile = this.map.get(key2);
             
-            // Always grant resource if tile is revealed (even if already revealed)
-            const resourceType = this.getTileResourceType(tile.type);
-            if (resourceType && tile.revealed) {
-                console.log(`💰 ${this.activePlayer.name} adjacent to revealed ${tile.type} - gaining 1 ${resourceType}`);
-                this.activePlayer.resources[resourceType] += 1;
-                resourcesGained[resourceType] += 1;
-            }
-            
-            // If not yet revealed, reveal it and give token
+            // If not yet revealed, reveal it and give token + resource
             // LIMIT: Only 1 reveal per move
             if (!tile.revealed) {
                 if (newlyRevealed.length === 0) {
@@ -325,17 +316,29 @@ export class GameManager {
                     }
                     console.log(`📍 Revealed neighbor at (${n.q}, ${n.r}): ${tile.type} with token ${tile.numberToken}`);
                     newlyRevealed.push(tile);
+                    
+                    // Grant 1 resource from newly revealed tile
+                    const resourceType = this.getTileResourceType(tile.type);
+                    if (resourceType) {
+                        this.activePlayer.resources[resourceType] += 1;
+                        resourcesGained[resourceType] += 1;
+                    }
                 } else {
                     console.log("⚠️ Skipped revealing neighbor due to 1-reveal limit");
                 }
             }
         }
 
-        console.log(`🔍 Total newly revealed tiles: ${newlyRevealed.length}, resources gained:`, resourcesGained);
+        console.log(`🔍 Total newly revealed tiles: ${newlyRevealed.length}`);
         return { newlyRevealed, resourcesGained };
     }
 
     moveHero(q, r, edgeIndex) {
+        // Check if hero extracted this turn (cannot move after extracting)
+        if (this.activePlayer.extractedThisTurn) {
+            return { success: false, reason: "Cannot move after extracting this turn." };
+        }
+        
         // Check encounter limit
         if (this.activePlayer.encountersResolved > 0) {
             return { success: false, reason: "Cannot move after resolving an encounter this turn." };
@@ -367,38 +370,40 @@ export class GameManager {
         }
 
         this.hero.location = { q, r, edgeIndex };
+        this.activePlayer.movedThisTurn = true;
 
-        // Reveal adjacent tiles and check for encounters
+        // Reveal adjacent tiles
         const revealResult = this.revealAdjacentTiles(q, r, edgeIndex);
         const newTiles = revealResult.newlyRevealed;
-        const resourcesGained = revealResult.resourcesGained;
-        const encounters = [];
 
+        // Return pending tiles that need encounter level selection (limit 1 per turn)
+        const pendingEncounterTiles = [];
         for (const tile of newTiles) {
-            // Limit encounters to 1 per turn
             if (this.activePlayer.encountersResolved >= 1) {
                 console.log("⚠️ Encounter limit reached for this turn (1/1)");
-                continue; // Skip generating more encounters
+                continue;
             }
-
-            // Draw encounter
-            const card = this.encounterManager.drawCard(this.threatLevel);
-            encounters.push({
-                tile: tile,
-                card: card
-            });
-            
+            pendingEncounterTiles.push(tile);
             this.activePlayer.encountersResolved++;
-            
-            // For now, just handle the first one to avoid UI stack overflow?
-            // Or return all.
         }
 
         return { 
             success: true, 
-            encounters: encounters, 
+            pendingEncounterTiles: pendingEncounterTiles,
             movedToOutpost: movingToOutpost,
-            resourcesGained: resourcesGained
+            resourcesGained: revealResult.resourcesGained
+        };
+    }
+
+    drawEncounterForTile(tile, chosenLevel) {
+        // Player chooses encounter level (1, 2, or 3)
+        const level = Math.max(1, Math.min(3, chosenLevel));
+        tile.encounterLevel = level; // Store chosen level on tile for VP calculation
+        const card = this.encounterManager.drawCard(level);
+        return {
+            tile: tile,
+            card: card,
+            level: level
         };
     }
 
@@ -440,17 +445,14 @@ export class GameManager {
         return { levelUp: false };
     }
 
-    addLoot(item) {
-        this.hero.hand.push(item);
-        // Update stats based on item bonus
-        if (item.slot === 'weapon') {
-            this.hero.stats.strength += item.bonus || 0;
-        } else if (item.slot === 'tech') {
-            this.hero.stats.tech += item.bonus || 0;
-        } else if (item.slot === 'body') {
-            // Maybe defense or health?
-            this.hero.health += item.bonus || 0; // Heal? Or Max Health?
-        }
+    equipGear(item) {
+        if (!item || !item.slot) return;
+        
+        const slot = item.slot;
+        if (slot !== 'suit' && slot !== 'weapon') return;
+        
+        // Replace existing gear in that slot
+        this.hero.gear[slot] = item;
     }
 
     respawnHero() {
@@ -482,7 +484,7 @@ export class GameManager {
         }
         
         // Find nearest owned outpost
-        const nearestOutpost = this.findNearestOutpost(player);
+        /*const nearestOutpost = this.findNearestOutpost(player);
         
         if (nearestOutpost) {
             // Respawn at nearest outpost edge (pick any edge)
@@ -498,7 +500,7 @@ export class GameManager {
                 r: 0,
                 edgeIndex: 0
             };
-        }
+        }*/
         
         // Mark as inactive for 2 turns
         player.hero.inactiveTurns = 2;
@@ -735,13 +737,11 @@ export class GameManager {
     }
 
     generateLoot(level) {
-        const gearTypes = ['head', 'body', 'weapon', 'tech'];
+        const gearTypes = ['suit', 'weapon'];
         const slot = gearTypes[Math.floor(Math.random() * gearTypes.length)];
         const names = {
-            head: ['Helmet', 'Visor', 'Neural Implant'],
-            body: ['Armor Vest', 'Power Suit', 'Shield Gen'],
-            weapon: ['Plasma Rifle', 'Laser Gun', 'Rail Gun'],
-            tech: ['Scanner', 'Med Kit', 'EMP Device']
+            suit: ['Scout Armor', 'Power Suit', 'Exo-Skeleton', 'Hazmat Gear'],
+            weapon: ['Plasma Rifle', 'Omni-Tool', 'Laser Cutter', 'Rail Gun']
         };
 
         const item = {
@@ -751,19 +751,19 @@ export class GameManager {
         
         const bonus = level + 1;
         
-        // Assign stats based on slot
-        if (slot === 'head') item.tactics = bonus;
-        if (slot === 'body') item.strength = bonus;
-        if (slot === 'weapon') item.strength = Math.ceil(bonus / 2); // Weapons give less raw str but maybe tactic? Let's just say Str for now or mixed.
-        // Actually, let's keep it simple:
-        if (slot === 'weapon') item.tactics = bonus; // Aiming?
-        if (slot === 'tech') item.tech = bonus;
-        
-        // Override for weapon to be Strength to match "Combat" feel or keep Tactics?
-        // Let's make Weapon = Strength to help with killing stuff.
-        if (slot === 'weapon') {
-             delete item.tactics;
-             item.strength = bonus;
+        // Simple stat distribution
+        if (slot === 'suit') {
+            // Suits focus on Strength (Defense) and Tech (Utility)
+            if (Math.random() > 0.5) item.strength = bonus;
+            else item.tech = bonus;
+            
+            if (level > 1) item.tactics = 1;
+        } else {
+            // Weapons focus on Tactics (Aim) and Strength (Force)
+            if (Math.random() > 0.5) item.tactics = bonus;
+            else item.strength = bonus;
+            
+            if (level > 1) item.tech = 1;
         }
 
         return item;
@@ -791,9 +791,59 @@ export class GameManager {
 
         tile.outpost = true;
         tile.ownerId = this.activePlayer.id; // Assign owner
-        this.victoryPoints++;
+        this.activePlayer.victoryPoints++;
 
         return { success: true };
+    }
+
+    extractResources() {
+        // Check if already extracted this turn
+        if (this.activePlayer.extractedThisTurn) {
+            return { success: false, reason: "Already extracted this turn." };
+        }
+
+        // Check if hero moved this turn (cannot extract after moving)
+        if (this.activePlayer.movedThisTurn) {
+            return { success: false, reason: "Cannot extract after moving this turn." };
+        }
+
+        const cost = ACTION_COSTS.extract;
+        if (!canAfford(this.resources, cost)) {
+            return { success: false, reason: `Not enough resources (need ${formatCostString(cost)})` };
+        }
+
+        const heroLoc = this.hero.location;
+        if (!heroLoc) {
+            return { success: false, reason: "Hero location invalid" };
+        }
+
+        // Pay costs
+        applyCost(this.resources, cost);
+
+        // Gather from adjacent tiles (Tile 1 and Neighbor)
+        const gains = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
+        const tilesToCheck = [];
+        
+        // Tile 1 (Current q,r)
+        tilesToCheck.push({ q: heroLoc.q, r: heroLoc.r });
+        
+        // Tile 2 (Neighbor across edge)
+        const neighbor = this.getNeighbor(heroLoc.q, heroLoc.r, heroLoc.edgeIndex);
+        tilesToCheck.push({ q: neighbor.q, r: neighbor.r });
+
+        tilesToCheck.forEach(pos => {
+            const tile = this.map.get(`${pos.q},${pos.r}`);
+            if (tile && tile.revealed) {
+                const res = this.getTileResourceType(tile.type);
+                if (res) {
+                    this.resources[res]+=2;
+                    gains[res]+=2;
+                }
+            }
+        });
+
+        this.activePlayer.extractedThisTurn = true;
+        return { success: true, gains };
     }
 
     upgradeToFortress(q, r) {
@@ -825,19 +875,24 @@ export class GameManager {
     handleInvasion() {
         this.threatLevel++;
 
-        // Discard half resources if > 7
-        let discarded = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
-        const totalResources = Object.values(this.resources).reduce((a, b) => a + b, 0);
+        // Discard half resources if > 7 for ALL players
+        const discardedByPlayer = {};
 
-        if (totalResources > 7) {
-            for (let key in this.resources) {
-                const half = Math.floor(this.resources[key] / 2);
-                discarded[key] = half;
-                this.resources[key] -= half;
+        this.players.forEach(player => {
+            let discarded = { scrap: 0, fuel: 0, food: 0, alloy: 0, intel: 0 };
+            const totalResources = Object.values(player.resources).reduce((a, b) => a + b, 0);
+
+            if (totalResources > 7) {
+                for (let key in player.resources) {
+                    const half = Math.floor(player.resources[key] / 2);
+                    discarded[key] = half;
+                    player.resources[key] -= half;
+                }
             }
-        }
+            discardedByPlayer[player.id] = discarded;
+        });
 
-        return { discarded, threatLevel: this.threatLevel };
+        return { discardedByPlayer, threatLevel: this.threatLevel };
     }
 
     addNeighbors(q, r) {
@@ -932,31 +987,6 @@ export class GameManager {
             }
         }
 
-        // Passive income for all players (only if hero is at outpost)
-        this.players.forEach(player => {
-            let fuelGain = 0;
-            let foodGain = 0;
-            
-            this.map.forEach(tile => {
-                if (tile.outpost && tile.ownerId === player.id) {
-                    // Check if hero is located at this tile (any edge)
-                    const heroLoc = player.hero.location;
-                    if (heroLoc && heroLoc.q === tile.q && heroLoc.r === tile.r) {
-                        if (tile.fortress) {
-                            fuelGain += 2;
-                            foodGain += 2;
-                        } else {
-                            fuelGain += 1;
-                            foodGain += 1;
-                        }
-                    }
-                }
-            });
-            
-            player.resources.fuel += fuelGain;
-            player.resources.food += foodGain;
-        });
-
         // Switch Player - skip eliminated players
         let attempts = 0;
         do {
@@ -972,8 +1002,10 @@ export class GameManager {
             if (attempts > this.players.length) break;
         } while (this.activePlayer.eliminated);
 
-        // Reset encounter limit for the new player
+        // Reset flags for the new player
         this.activePlayer.encountersResolved = 0;
+        this.activePlayer.extractedThisTurn = false;
+        this.activePlayer.movedThisTurn = false;
 
         this.phase = 'production';
 
@@ -984,5 +1016,28 @@ export class GameManager {
             distance: distance,
             nextPlayer: this.activePlayer.name
         };
+    }
+
+    // Passive income: 1 fuel + 1 food per outpost (2 each for fortress) at start of turn
+    gatherPassiveIncome() {
+        let fuelGain = 0;
+        let foodGain = 0;
+        
+        this.map.forEach(tile => {
+            if (tile.outpost && tile.ownerId === this.activePlayer.id) {
+                if (tile.fortress) {
+                    fuelGain += 2;
+                    foodGain += 2;
+                } else {
+                    fuelGain += 1;
+                    foodGain += 1;
+                }
+            }
+        });
+        
+        this.resources.fuel += fuelGain;
+        this.resources.food += foodGain;
+        
+        return { fuel: fuelGain, food: foodGain };
     }
 }

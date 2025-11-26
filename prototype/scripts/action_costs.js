@@ -10,7 +10,8 @@ export const ACTION_COSTS = {
     buildOutpost: { scrap: 1, food: 1, fuel: 1, alloy: 1, intel: 1 },
     upgradeFortress: { scrap: 2, alloy: 3 },
     moveHero: { fuel: 2 },
-    explore: { fuel: 1, food: 1 }
+    explore: { fuel: 1, food: 1 },
+    extract: { fuel: 1, food: 1 }
 };
 
 const getResourceOrder = (resource) => {

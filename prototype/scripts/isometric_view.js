@@ -21,11 +21,14 @@ export class IsometricView {
     }
 
     // Convert isometric screen coordinates back to flat hex pixel coordinates
+    // Account for tile height since the top face is drawn at y - tileHeight
     isoToFlat(x, y) {
         const cy = this.grid.offsetY;
+        // Add tileHeight to compensate for the raised top face
+        const adjustedY = y + this.tileHeight;
         return {
             x: x,
-            y: cy + (y - cy) / this.scaleY
+            y: cy + (adjustedY - cy) / this.scaleY
         };
     }
 
@@ -98,29 +101,11 @@ export class IsometricView {
 
     drawHexPrism(x, y, size, height, topColor, sideColor) {
         const ctx = this.ctx;
-        // We only need to draw the front 3 faces for the sides + the top
-        // But simpler to draw full polygon shifted down, then connect corners
+        // Only draw the front-facing sides (bottom 3 sides: indices 1, 2, 3)
+        // These are the sides visible from the top-down isometric view
+        const visibleIndices = [1, 2, 3];
         
-        // Bottom hex (darker)
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-            const angle_deg = 60 * i - 30;
-            const angle_rad = Math.PI / 180 * angle_deg;
-            const px = x + size * Math.cos(angle_rad);
-            const py = y + size * Math.sin(angle_rad) * this.scaleY;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-        }
-        ctx.closePath();
-        ctx.fillStyle = sideColor;
-        ctx.fill();
-
-        // Draw sides (rectangles connecting top and bottom vertices)
-        // We only need the front-facing sides: indices 0, 1, 2, 3 typically depending on angle
-        // 0 is right-bottom, 1 is bottom, 2 is left-bottom
-        const indices = [0, 1, 2, 3, 4, 5]; 
-        
-        for (let i of indices) {
+        for (let i of visibleIndices) {
             const angle_deg1 = 60 * i - 30;
             const angle_rad1 = Math.PI / 180 * angle_deg1;
             const x1 = x + size * Math.cos(angle_rad1);
@@ -139,7 +124,6 @@ export class IsometricView {
             ctx.closePath();
             ctx.fillStyle = sideColor;
             ctx.fill();
-            ctx.stroke();
         }
     }
 
@@ -293,13 +277,17 @@ export class IsometricView {
     render(mapData, selectedHex = null, players = null, hoveredEdge = null) {
         this.clear();
         
-        // Sort tiles by Y (r) for painter's algorithm
+        // Sort tiles by isometric depth for painter's algorithm
+        // In isometric view, tiles further back (smaller screen Y) should be drawn first
         const sortedKeys = Array.from(mapData.keys()).sort((a, b) => {
             const [q1, r1] = a.split(',').map(Number);
             const [q2, r2] = b.split(',').map(Number);
-            // Render order: Top-left to Bottom-right logic
-            // Y coordinate dictates draw order mainly.
-            return r1 - r2 || q1 - q2;
+            // Calculate screen Y position for each tile
+            const center1 = this.grid.hexToPixel(q1, r1);
+            const center2 = this.grid.hexToPixel(q2, r2);
+            const isoY1 = this.toIso(center1.x, center1.y).y;
+            const isoY2 = this.toIso(center2.x, center2.y).y;
+            return isoY1 - isoY2;
         });
 
         sortedKeys.forEach(key => {

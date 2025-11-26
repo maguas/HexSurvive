@@ -8,6 +8,8 @@ export class CombatUI {
         
         this.animationInterval = null;
         this.isAnimating = false;
+        this.currentRolledDice = null; // Store dice for grit spending
+        this.gritSpent = { tac: 0, str: 0, tech: 0 }; // Track grit spent per stat
     }
 
     show(encounterData) {
@@ -15,8 +17,9 @@ export class CombatUI {
         const enemy = card.enemy;
         const encounterLevel = encounterData.tile.encounterLevel || 1;
 
-        // Initiate combat in system
+        // Initiate combat in system and store tile reference
         this.combat.initiateCombat(card);
+        this.combat.currentEncounter.tile = encounterData.tile;
 
         // 1. Setup UI content
         this.setupHeader(card, encounterLevel);
@@ -117,14 +120,118 @@ export class CombatUI {
         document.getElementById('initial-actions').style.display = 'none';
         document.getElementById('combat-phase').classList.remove('hidden');
 
+        // Reset grit spending
+        this.gritSpent = { tac: 0, str: 0, tech: 0 };
+
         // 1. Roll Logic
         const rolledDice = this.combat.rollHeroDice(this.game.hero);
+        this.currentRolledDice = rolledDice;
         
         // 2. Start Animation
         this.playDiceAnimation(rolledDice).then(() => {
-            // 3. Show Resolution after animation finishes
-            this.resolveCombat(rolledDice);
+            // 3. Show grit spending UI if player has grit tokens
+            this.showGritSpendingUI(rolledDice);
         });
+    }
+
+    showGritSpendingUI(rolledDice) {
+        const player = this.game.activePlayer;
+        const availableGrit = player.gritTokens;
+        
+        // Calculate current totals
+        const totals = this.calculateTotals(rolledDice);
+        
+        // Build grit spending UI
+        let gritHTML = '';
+        if (availableGrit > 0) {
+            gritHTML = `
+                <div class="grit-spending">
+                    <h4>⚫ Spend Grit Tokens (${availableGrit - this.getTotalGritSpent()} remaining)</h4>
+                    <div class="grit-controls">
+                        <div class="grit-stat">
+                            <span class="grit-label">🎯 Tactics: +${this.gritSpent.tac}</span>
+                            <button class="grit-btn" onclick="combatUI.addGrit('tac')">+</button>
+                            <button class="grit-btn" onclick="combatUI.removeGrit('tac')">-</button>
+                        </div>
+                        <div class="grit-stat">
+                            <span class="grit-label">💪 Strength: +${this.gritSpent.str}</span>
+                            <button class="grit-btn" onclick="combatUI.addGrit('str')">+</button>
+                            <button class="grit-btn" onclick="combatUI.removeGrit('str')">-</button>
+                        </div>
+                        <div class="grit-stat">
+                            <span class="grit-label">🔧 Tech: +${this.gritSpent.tech}</span>
+                            <button class="grit-btn" onclick="combatUI.addGrit('tech')">+</button>
+                            <button class="grit-btn" onclick="combatUI.removeGrit('tech')">-</button>
+                        </div>
+                    </div>
+                    <button class="action-btn primary" onclick="combatUI.confirmGritAndResolve()">Confirm & Resolve</button>
+                </div>
+            `;
+        }
+        
+        this.resolutionContainer.innerHTML = gritHTML;
+        
+        // If no grit available, resolve immediately
+        if (availableGrit === 0) {
+            this.resolveCombat(rolledDice);
+        }
+    }
+
+    getTotalGritSpent() {
+        return this.gritSpent.tac + this.gritSpent.str + this.gritSpent.tech;
+    }
+
+    addGrit(stat) {
+        const player = this.game.activePlayer;
+        const available = player.gritTokens - this.getTotalGritSpent();
+        if (available > 0) {
+            this.gritSpent[stat]++;
+            this.updateGritUI();
+        }
+    }
+
+    removeGrit(stat) {
+        if (this.gritSpent[stat] > 0) {
+            this.gritSpent[stat]--;
+            this.updateGritUI();
+        }
+    }
+
+    updateGritUI() {
+        const player = this.game.activePlayer;
+        const remaining = player.gritTokens - this.getTotalGritSpent();
+        
+        // Update dice display with grit bonuses
+        const totals = this.calculateTotals(this.currentRolledDice);
+        totals.tac += this.gritSpent.tac;
+        totals.str += this.gritSpent.str;
+        totals.tech += this.gritSpent.tech;
+        this.renderDice(totals);
+        
+        // Refresh grit spending UI
+        this.showGritSpendingUI(this.currentRolledDice);
+    }
+
+    confirmGritAndResolve() {
+        // Deduct spent grit from player
+        const player = this.game.activePlayer;
+        const totalSpent = this.getTotalGritSpent();
+        player.gritTokens -= totalSpent;
+        
+        if (totalSpent > 0) {
+            window.log(`⚫ Spent ${totalSpent} Grit Token${totalSpent > 1 ? 's' : ''}`, 'info');
+        }
+        
+        // Resolve combat with grit bonuses applied
+        this.resolveCombat(this.currentRolledDice);
+    }
+
+    calculateTotals(rolledDice) {
+        return {
+            tac: rolledDice.filter(d => d.type === 'tac').reduce((a,b) => a + b.value, 0),
+            str: rolledDice.filter(d => d.type === 'str').reduce((a,b) => a + b.value, 0),
+            tech: rolledDice.filter(d => d.type === 'tech').reduce((a,b) => a + b.value, 0)
+        };
     }
 
     playDiceAnimation(finalDice) {
@@ -184,12 +291,15 @@ export class CombatUI {
     }
 
     resolveCombat(rolledDice) {
-        // Extract totals
+        // Extract totals and add grit bonuses
         const totals = {
-            tactics: rolledDice.filter(d => d.type === 'tac').reduce((a,b) => a + b.value, 0),
-            strength: rolledDice.filter(d => d.type === 'str').reduce((a,b) => a + b.value, 0),
-            tech: rolledDice.filter(d => d.type === 'tech').reduce((a,b) => a + b.value, 0)
+            tactics: rolledDice.filter(d => d.type === 'tac').reduce((a,b) => a + b.value, 0) + this.gritSpent.tac,
+            strength: rolledDice.filter(d => d.type === 'str').reduce((a,b) => a + b.value, 0) + this.gritSpent.str,
+            tech: rolledDice.filter(d => d.type === 'tech').reduce((a,b) => a + b.value, 0) + this.gritSpent.tech
         };
+
+        // Update dice display with final totals including grit
+        this.renderDice({ tac: totals.tactics, str: totals.strength, tech: totals.tech });
 
         // Check requirements
         const enemy = this.combat.currentEncounter.enemy;
