@@ -64,6 +64,12 @@ function init() {
     document.getElementById('btn-upgrade-fortress').addEventListener('click', handleUpgradeFortress);
     document.getElementById('btn-extract').addEventListener('click', handleExtract);
     document.getElementById('btn-end-turn').addEventListener('click', handleEndTurn);
+    
+    // Trade modal
+    document.getElementById('btn-trade').addEventListener('click', openTradeModal);
+    document.getElementById('btn-confirm-trade').addEventListener('click', confirmTrade);
+    document.getElementById('btn-cancel-trade').addEventListener('click', closeTradeModal);
+    document.getElementById('trade-give').addEventListener('change', updateTradeAvailable);
 
     // Canvas interaction
     const canvas = document.getElementById('hex-grid-canvas');
@@ -857,6 +863,46 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Trade Modal Functions
+function openTradeModal() {
+    document.getElementById('trade-modal').classList.remove('hidden');
+    updateTradeAvailable();
+}
+
+function closeTradeModal() {
+    document.getElementById('trade-modal').classList.add('hidden');
+}
+
+function updateTradeAvailable() {
+    const giveType = document.getElementById('trade-give').value;
+    const available = game.resources[giveType];
+    document.getElementById('trade-give-available').textContent = `(${available} available)`;
+}
+
+function confirmTrade() {
+    const giveType = document.getElementById('trade-give').value;
+    const receiveType = document.getElementById('trade-receive').value;
+    
+    if (giveType === receiveType) {
+        log("❌ Cannot trade same resource type", 'warning');
+        return;
+    }
+    
+    if (game.resources[giveType] < 4) {
+        log(`❌ Need at least 4 ${giveType} to trade`, 'warning');
+        return;
+    }
+    
+    // Execute trade: -4 give, +1 receive
+    game.resources[giveType] -= 4;
+    game.resources[receiveType] += 1;
+    
+    log(`🔄 Traded 4 ${giveType} for 1 ${receiveType}`, 'success');
+    
+    closeTradeModal();
+    updateUI();
+}
 
 // Start the game when DOM is ready
 if (document.readyState === 'loading') {

@@ -21,7 +21,10 @@
             </div>
 
             <div class="panel">
-                <h2>📦 Resources</h2>
+                <div class="panel-header-row">
+                    <h2>📦 Resources</h2>
+                    <button id="btn-trade" class="trade-btn" title="Trade Resources">🔄</button>
+                </div>
                 <div id="resource-display">
                     <div class="resource-item">
                         <span class="icon" title="Scrap">🔩</span>
@@ -152,6 +155,44 @@
                             <span class="level-label">Hard</span>
                             <span class="level-vp">+3 VP</span>
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade Modal -->
+            <div id="trade-modal" class="modal hidden">
+                <div class="modal-content trade-modal-content">
+                    <h2>🔄 Trade Resources</h2>
+                    <p class="trade-rate">Exchange Rate: 4 → 1</p>
+                    
+                    <div class="trade-section">
+                        <label>Give (4):</label>
+                        <select id="trade-give">
+                            <option value="scrap">🔩 Scrap</option>
+                            <option value="fuel">⚡ Fuel</option>
+                            <option value="food">🍏 Food</option>
+                            <option value="alloy">🔮 Alloy</option>
+                            <option value="intel">💾 Intel</option>
+                        </select>
+                        <span id="trade-give-available" class="trade-available">(0 available)</span>
+                    </div>
+                    
+                    <div class="trade-arrow">⬇️</div>
+                    
+                    <div class="trade-section">
+                        <label>Receive (1):</label>
+                        <select id="trade-receive">
+                            <option value="scrap">🔩 Scrap</option>
+                            <option value="fuel">⚡ Fuel</option>
+                            <option value="food">🍏 Food</option>
+                            <option value="alloy">🔮 Alloy</option>
+                            <option value="intel">💾 Intel</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button id="btn-confirm-trade" class="action-btn primary">Confirm Trade</button>
+                        <button id="btn-cancel-trade" class="action-btn">Cancel</button>
                     </div>
                 </div>
             </div>
