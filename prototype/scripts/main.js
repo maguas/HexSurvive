@@ -173,17 +173,6 @@ function updateUI() {
         inactiveStatus.classList.add('hidden');
     }
     
-    // Update elimination status
-    const eliminatedStatus = document.getElementById('hero-eliminated-status');
-    if (player.eliminated) {
-        eliminatedStatus.classList.remove('hidden');
-    } else {
-        eliminatedStatus.classList.add('hidden');
-    }
-    
-    // Update death count
-    document.getElementById('death-count').textContent = hero.deathCount || 0;
-    
     // Calculate total stats from base + gear
     const totalStats = {
         tactics: hero.stats.tactics,
@@ -585,24 +574,25 @@ window.claimRewards = function() {
 
 window.acceptDefeat = function() {
     const player = game.activePlayer;
+    
+    // Get encounter level from current combat
+    const encounterLevel = combat.currentEncounter?.tile?.encounterLevel || 1;
+    
+    // Lose VP equal to encounter level
+    const vpLost = Math.min(player.victoryPoints, encounterLevel);
+    player.victoryPoints -= vpLost;
+    log(`📉 Lost ${vpLost} VP from defeat`, 'danger');
+    
+    // Lose half resources
     for (const res in player.resources) {
         player.resources[res] = Math.floor(player.resources[res] / 2);
     }
     
-    // Award 2 grit tokens on defeat
-    player.gritTokens += 2;
-    log(`⚫ +2 Grit Tokens (defeat bonus)`, 'info');
+    // Award grit tokens on defeat
+    player.gritTokens += vpLost;
+    log(`⚫ +${vpLost} Grit Tokens (defeat bonus)`, 'info');
     
-    const defeatResult = game.defeatHero(player.id);
-    if (defeatResult.eliminated) {
-        log(`💀 ${player.name} eliminated!`, 'danger');
-        if (defeatResult.winner) {
-             alert(`${defeatResult.winner.name} wins by elimination!`);
-             location.reload();
-        }
-    } else {
-        log(`💀 Hero defeated!`, 'danger');
-    }
+    log(`💀 Hero defeated!`, 'danger');
     
     combatUI.close();
     updateUI();

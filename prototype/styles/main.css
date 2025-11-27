@@ -944,25 +944,25 @@ aside {
 }
 
 .result-banner.animate {
-    animation: bannerSlideIn 3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: bannerSlideIn 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .result-banner.animate .result-banner-text {
-    animation: textReveal 3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation: textReveal 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes bannerSlideIn {
-    0% { opacity: 1; transform: translateY(-50%) scaleX(0); }
-    10% { transform: translateY(-50%) scaleX(1); }
-    90% { opacity: 1; transform: translateY(-50%) scaleX(1); }
-    100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+    0% { opacity: 1; transform: translateY(-50%) scaleX(0); transform-origin: left; }
+    10% { opacity: 1; transform: translateY(-50%) scaleX(1); transform-origin: left; }
+    85% { opacity: 1; transform: translateY(-50%) scaleX(1); transform-origin: right; }
+    100% { opacity: 1; transform: translateY(-50%) scaleX(0); transform-origin: right; }
 }
 
 @keyframes textReveal {
-    0%, 10% { opacity: 0; transform: translateY(20px); }
-    20% { opacity: 1; transform: translateY(0); }
-    90% { opacity: 1; transform: translateY(0) scale(1); }
-    100% { opacity: 0; transform: translateY(-10px) scale(1.1); }
+    0%, 8% { opacity: 0; transform: translateY(20px); }
+    18% { opacity: 1; transform: translateY(0); }
+    80% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(0); }
 }
 
 .result-banner.victory {

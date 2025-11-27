@@ -86,13 +86,24 @@ export class GameManager {
 
     initMap() {
         const radius = 3;
+        
+        // 4 starting positions for overgrown tiles (evenly distributed)
+        const startingPositions = [
+            { q: -2, r: 1 },  // Left
+            { q: 2, r: -1 },  // Right
+            { q: -1, r: -1 }, // Top
+            { q: 1, r: 1 }    // Bottom
+        ];
+        const startingKeys = new Set(startingPositions.map(p => `${p.q},${p.r}`));
+        
+        // Tile types for remaining tiles (no overgrown - they're placed manually)
         const tileTypes = [
             'ruins', 'ruins', 'ruins', 'ruins', 'ruins',
             'wasteland', 'wasteland', 'wasteland', 'wasteland',
-            'overgrown', 'overgrown', 'overgrown', 'overgrown',
             'crash_site', 'crash_site', 'crash_site',
             'bunker', 'bunker', 'bunker',
-            'barren', 'barren'
+            'barren', 'barren',
+            'ruins', 'ruins', 'wasteland', 'wasteland' // Extra to fill remaining tiles
         ];
 
         // Shuffle types
@@ -107,20 +118,34 @@ export class GameManager {
             const r1 = Math.max(-radius, -q - radius);
             const r2 = Math.min(radius, -q + radius);
             for (let r = r1; r <= r2; r++) {
-                const type = tileTypes[typeIndex % tileTypes.length];
-                typeIndex++;
-
+                const key = `${q},${r}`;
                 const distanceFromCenter = Math.max(Math.abs(q), Math.abs(r), Math.abs(-q - r));
                 
-                this.map.set(`${q},${r}`, {
-                    type: type,
-                    revealed: false, // All start hidden
-                    q: q,
-                    r: r,
-                    numberToken: null,
-                    outpost: false,
-                    level: distanceFromCenter // Distance from center
-                });
+                // Check if this is a starting position
+                if (startingKeys.has(key)) {
+                    this.map.set(key, {
+                        type: 'overgrown',
+                        revealed: true, // Starting tiles are revealed
+                        q: q,
+                        r: r,
+                        numberToken: 7, // All starting tiles have token 7
+                        outpost: false,
+                        level: distanceFromCenter
+                    });
+                } else {
+                    const type = tileTypes[typeIndex % tileTypes.length];
+                    typeIndex++;
+                    
+                    this.map.set(key, {
+                        type: type,
+                        revealed: false, // All others start hidden
+                        q: q,
+                        r: r,
+                        numberToken: null,
+                        outpost: false,
+                        level: distanceFromCenter
+                    });
+                }
             }
         }
 
@@ -141,7 +166,9 @@ export class GameManager {
         // 3: P2 Hero
 
         if (this.setupStep === 0 || this.setupStep === 2) {
-            // Place Outpost
+            // Place Outpost - must be on a revealed overgrown starting tile
+            if (!tile.revealed) return { success: false, reason: "Must place on a revealed tile" };
+            if (tile.type !== 'overgrown') return { success: false, reason: "Must place on an overgrown tile" };
             if (tile.outpost) return { success: false, reason: "Tile already has an outpost" };
 
             tile.outpost = true;
