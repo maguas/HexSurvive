@@ -565,87 +565,94 @@ aside {
 
 /* ENHANCED COMBAT UI */
 .combat-modal-content {
-    max-width: 600px;
-    width: 90vw;
-    background: #1e1e24; /* Darker background */
+    position: relative;
+    max-width: 700px;
+    width: 95vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: #1e1e24;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
     border: 1px solid #333;
+    padding: 12px;
+}
+
+.combat-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
 }
 
 .combat-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 6px;
     border-bottom: 1px solid #333;
-    padding-bottom: 15px;
+    padding-bottom: 6px;
 }
 
 .combat-header h2 {
     margin: 0;
-    font-size: 1.8rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    font-size: 1rem;
 }
 
 .encounter-level-badge {
     background: linear-gradient(135deg, #673ab7, #512da8);
     color: white;
-    padding: 6px 14px;
-    border-radius: 20px;
+    padding: 4px 10px;
+    border-radius: 12px;
     font-weight: bold;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     border: 1px solid rgba(255,255,255,0.1);
 }
 
 .encounter-info {
     background: linear-gradient(to bottom, rgba(30, 30, 36, 0.8), rgba(20, 20, 25, 0.8));
-    padding: 20px;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    margin-bottom: 8px;
     text-align: center;
     border: 1px solid #333;
 }
 
 .encounter-name {
-    font-size: 1.8rem;
+    font-size: 1rem;
     font-weight: bold;
     color: #ff5252;
-    margin-bottom: 8px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    letter-spacing: 0.5px;
+    margin-bottom: 2px;
 }
 
 .encounter-description {
     color: #aaa;
     font-style: italic;
-    font-size: 0.95rem;
+    font-size: 0.75rem;
 }
 
 .requirements-section,
 .rewards-section {
-    margin-bottom: 20px;
-    padding: 20px;
+    margin-bottom: 0;
+    padding: 8px;
     background: #25252b;
-    border-radius: 10px;
+    border-radius: 6px;
     border: 1px solid #333;
 }
 
 .requirements-section h3,
 .rewards-section h3 {
-    font-size: 1.0rem;
-    margin-bottom: 15px;
-    color: #ffb74d; /* Softer orange */
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+    color: #ffb74d;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
 }
 
 .requirements-list {
     display: flex;
-    gap: 15px;
+    gap: 6px;
     flex-wrap: wrap;
     justify-content: center;
 }
@@ -654,12 +661,11 @@ aside {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 15px 20px;
-    border-radius: 12px;
-    min-width: 90px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    min-width: 55px;
     border: 2px solid;
     background: rgba(0, 0, 0, 0.2);
-    transition: transform 0.2s;
 }
 
 .requirement-item:hover {
@@ -685,43 +691,48 @@ aside {
 }
 
 .requirement-icon {
-    font-size: 2rem;
-    margin-bottom: 8px;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    font-size: 1rem;
+    margin-bottom: 2px;
 }
 
 .requirement-value {
-    font-size: 1.5rem;
+    font-size: 0.95rem;
     font-weight: 800;
     color: #fff;
 }
 
 .requirement-label {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: rgba(255,255,255,0.7);
     text-transform: uppercase;
-    margin-top: 4px;
     font-weight: 600;
 }
 
 .gear-reward {
     background: rgba(76, 175, 80, 0.1);
     border: 1px solid var(--accent-green);
-    padding: 12px;
-    border-radius: 8px;
-    margin-bottom: 12px;
+    padding: 6px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
 }
 
 .resource-reward-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
+    gap: 4px;
+    padding: 3px 8px;
     background: #2d2d35;
     border: 1px solid #444;
-    border-radius: 20px;
-    font-size: 1rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
     color: #ddd;
+}
+
+.resource-rewards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 .resource-reward-item.xp {
@@ -732,15 +743,15 @@ aside {
 
 .modal-actions {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     margin-top: 10px;
 }
 
 .modal-actions .action-btn {
-    padding: 10px 16px;
-    font-size: 1rem;
+    padding: 8px 14px;
+    font-size: 0.9rem;
     font-weight: bold;
-    border-radius: 8px;
+    border-radius: 6px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     transition: all 0.2s;
@@ -791,15 +802,67 @@ aside {
     color: var(--accent-green);
 }
 
-.dice-container {
+/* DICE ROLL with GRIT */
+.dice-item {
+    position: relative;
     display: flex;
-    gap: 10px;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    flex-wrap: wrap;
+    width: 80px;
+    height: 90px;
+    border-radius: 10px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
-.dice-container.rolling {
-    animation: shake 0.5s;
+.grit-controls {
+    position: absolute;
+    top: 0;
+    left: -15px;
+    right: -15px;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none; /* Allow clicking dice underneath if needed */
+}
+
+.grit-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: #1a1a1d;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    pointer-events: auto;
+    transition: all 0.2s;
+}
+
+.grit-btn:hover {
+    transform: scale(1.1);
+}
+
+.grit-btn.add { background: var(--accent-green); }
+.grit-btn.remove { background: var(--accent-red); }
+
+.grit-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #333;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 1px solid #666;
 }
 
 @keyframes shake {
@@ -830,52 +893,180 @@ aside {
 
 .combat-result-details {
     text-align: center;
-    padding: 15px;
-    font-size: 1.1rem;
+    padding: 6px;
+    font-size: 0.85rem;
+}
+
+/* Combat phase - horizontal dice layout */
+.combat-phase {
+    margin-top: 8px;
+}
+
+.combat-phase h3 {
+    font-size: 0.8rem;
+    margin-bottom: 6px;
+    color: var(--accent-yellow);
+}
+
+.player-dice {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Result banner - full screen overlay */
+.result-banner {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 120px;
+    transform: translateY(-50%) scaleX(0);
+    transform-origin: left;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+}
+
+.result-banner-text {
+    font-size: 4rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    color: white;
+    opacity: 0;
+    transform: translateY(20px);
+    text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+}
+
+.result-banner.animate {
+    animation: bannerSlideIn 3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.result-banner.animate .result-banner-text {
+    animation: textReveal 3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes bannerSlideIn {
+    0% { opacity: 1; transform: translateY(-50%) scaleX(0); }
+    10% { transform: translateY(-50%) scaleX(1); }
+    90% { opacity: 1; transform: translateY(-50%) scaleX(1); }
+    100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+}
+
+@keyframes textReveal {
+    0%, 10% { opacity: 0; transform: translateY(20px); }
+    20% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-10px) scale(1.1); }
+}
+
+.result-banner.victory {
+    background: linear-gradient(90deg, rgba(76, 175, 80, 0.9), rgba(46, 125, 50, 0.9));
+    box-shadow: 0 0 50px rgba(76, 175, 80, 0.5);
+    border-top: 2px solid #81C784;
+    border-bottom: 2px solid #81C784;
+}
+
+.result-banner.defeat {
+    background: linear-gradient(90deg, rgba(244, 67, 54, 0.9), rgba(198, 40, 40, 0.9));
+    box-shadow: 0 0 50px rgba(244, 67, 54, 0.5);
+    border-top: 2px solid #ef5350;
+    border-bottom: 2px solid #ef5350;
+}
+
+.result-phase {
+    display: none;
+}
+
+.result-message {
+    display: none;
+}
+
+/* Result actions closer to dice */
+.result-actions {
+    margin-top: 4px;
+    display: flex;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeIn 0.5s ease-out 2.5s forwards;
+}
+
+.result-actions .action-btn {
+    padding: 6px 24px;
+    font-size: 0.9rem;
+    width: auto;
+    min-width: 120px;
+    border-radius: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    border: none;
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    color: white;
+    transition: all 0.2s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.result-actions .action-btn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.4);
+    background: linear-gradient(135deg, #ffb74d 0%, #ef6c00 100%);
 }
 
 .reward-display {
-    margin-top: 20px;
-    padding: 20px;
+    margin-top: 8px;
+    padding: 8px;
     background: rgba(76, 175, 80, 0.1);
-    border: 2px solid var(--accent-green);
-    border-radius: 10px;
+    border: 1px solid var(--accent-green);
+    border-radius: 6px;
     text-align: center;
 }
 
 .reward-display h3 {
     color: var(--accent-green);
-    margin-bottom: 15px;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
 }
 
 .xp-cube {
-    font-size: 1.5rem;
-    padding: 15px;
+    font-size: 0.85rem;
+    padding: 4px 8px;
     background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
     color: #000;
-    border-radius: 8px;
+    border-radius: 4px;
     font-weight: bold;
     display: inline-block;
-    margin: 10px 0;
+    margin: 4px 0;
 }
 
 .loot-item {
-    padding: 15px;
+    padding: 6px;
     background: rgba(156, 39, 176, 0.2);
-    border: 2px solid var(--accent-purple);
-    border-radius: 8px;
-    margin: 10px 0;
+    border: 1px solid var(--accent-purple);
+    border-radius: 4px;
+    margin: 4px 0;
+    display: inline-block;
 }
 
 .item-name {
-    font-size: 1.3rem;
+    font-size: 0.85rem;
     font-weight: bold;
     color: var(--accent-purple);
-    margin-bottom: 8px;
+    margin-bottom: 2px;
 }
 
 .item-bonus {
-    font-size: 1rem;
+    font-size: 0.75rem;
     color: var(--accent-green);
 }
 

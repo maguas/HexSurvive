@@ -28,7 +28,8 @@ export class CombatUI {
 
         // 2. Reset state
         document.getElementById('combat-phase').classList.add('hidden');
-        document.getElementById('result-phase').classList.add('hidden');
+        document.getElementById('result-banner').classList.add('hidden');
+        document.getElementById('result-actions').innerHTML = '';
         document.getElementById('initial-actions').style.display = 'flex';
         this.diceContainer.innerHTML = '';
         this.resolutionContainer.innerHTML = '';
@@ -135,46 +136,32 @@ export class CombatUI {
     }
 
     showGritSpendingUI(rolledDice) {
-        const player = this.game.activePlayer;
-        const availableGrit = player.gritTokens;
+        const availableGrit = this.game.activePlayer.gritTokens;
         
-        // Calculate current totals
-        const totals = this.calculateTotals(rolledDice);
-        
-        // Build grit spending UI
-        let gritHTML = '';
-        if (availableGrit > 0) {
-            gritHTML = `
-                <div class="grit-spending">
-                    <h4>⚫ Spend Grit Tokens (${availableGrit - this.getTotalGritSpent()} remaining)</h4>
-                    <div class="grit-controls">
-                        <div class="grit-stat">
-                            <span class="grit-label">🎯 Tactics: +${this.gritSpent.tac}</span>
-                            <button class="grit-btn" onclick="combatUI.addGrit('tac')">+</button>
-                            <button class="grit-btn" onclick="combatUI.removeGrit('tac')">-</button>
-                        </div>
-                        <div class="grit-stat">
-                            <span class="grit-label">💪 Strength: +${this.gritSpent.str}</span>
-                            <button class="grit-btn" onclick="combatUI.addGrit('str')">+</button>
-                            <button class="grit-btn" onclick="combatUI.removeGrit('str')">-</button>
-                        </div>
-                        <div class="grit-stat">
-                            <span class="grit-label">🔧 Tech: +${this.gritSpent.tech}</span>
-                            <button class="grit-btn" onclick="combatUI.addGrit('tech')">+</button>
-                            <button class="grit-btn" onclick="combatUI.removeGrit('tech')">-</button>
-                        </div>
-                    </div>
-                    <button class="action-btn primary" onclick="combatUI.confirmGritAndResolve()">Confirm & Resolve</button>
-                </div>
-            `;
-        }
-        
-        this.resolutionContainer.innerHTML = gritHTML;
-        
-        // If no grit available, resolve immediately
+        // If no grit tokens, resolve immediately
         if (availableGrit === 0) {
             this.resolveCombat(rolledDice);
+            return;
         }
+        
+        // Re-render dice with controls enabled
+        const totals = this.calculateTotals(rolledDice);
+        totals.tac += this.gritSpent.tac;
+        totals.str += this.gritSpent.str;
+        totals.tech += this.gritSpent.tech;
+        
+        this.renderDice(totals, false, true); // true = enable controls
+        
+        const remaining = availableGrit - this.getTotalGritSpent();
+        
+        this.resolutionContainer.innerHTML = `
+            <div style="text-align:center; margin-top:8px;">
+                <div style="color:#aaa; font-size:0.75rem; margin-bottom:4px;">
+                    ⚫ Grit: <strong>${remaining}</strong>
+                </div>
+                <button class="action-btn primary" onclick="combatUI.confirmGritAndResolve()">Resolve</button>
+            </div>
+        `;
     }
 
     getTotalGritSpent() {
@@ -186,34 +173,18 @@ export class CombatUI {
         const available = player.gritTokens - this.getTotalGritSpent();
         if (available > 0) {
             this.gritSpent[stat]++;
-            this.updateGritUI();
+            this.showGritSpendingUI(this.currentRolledDice);
         }
     }
 
     removeGrit(stat) {
         if (this.gritSpent[stat] > 0) {
             this.gritSpent[stat]--;
-            this.updateGritUI();
+            this.showGritSpendingUI(this.currentRolledDice);
         }
     }
 
-    updateGritUI() {
-        const player = this.game.activePlayer;
-        const remaining = player.gritTokens - this.getTotalGritSpent();
-        
-        // Update dice display with grit bonuses
-        const totals = this.calculateTotals(this.currentRolledDice);
-        totals.tac += this.gritSpent.tac;
-        totals.str += this.gritSpent.str;
-        totals.tech += this.gritSpent.tech;
-        this.renderDice(totals);
-        
-        // Refresh grit spending UI
-        this.showGritSpendingUI(this.currentRolledDice);
-    }
-
     confirmGritAndResolve() {
-        // Deduct spent grit from player
         const player = this.game.activePlayer;
         const totalSpent = this.getTotalGritSpent();
         player.gritTokens -= totalSpent;
@@ -222,7 +193,6 @@ export class CombatUI {
             window.log(`⚫ Spent ${totalSpent} Grit Token${totalSpent > 1 ? 's' : ''}`, 'info');
         }
         
-        // Resolve combat with grit bonuses applied
         this.resolveCombat(this.currentRolledDice);
     }
 
@@ -269,25 +239,40 @@ export class CombatUI {
         });
     }
 
-    renderDice(totals, isAnimating = false) {
-        // Reuse existing HTML structure
-        this.diceContainer.innerHTML = `
-            <div class="dice-item tactics ${isAnimating ? 'rolling' : ''}">
-                <div class="dice-icon">🎯</div>
-                <div class="dice-value">${totals.tac}</div>
-                <div class="dice-label">Tactics</div>
-            </div>
-            <div class="dice-item strength ${isAnimating ? 'rolling' : ''}">
-                <div class="dice-icon">💪</div>
-                <div class="dice-value">${totals.str}</div>
-                <div class="dice-label">Strength</div>
-            </div>
-            <div class="dice-item tech ${isAnimating ? 'rolling' : ''}">
-                <div class="dice-icon">🔧</div>
-                <div class="dice-value">${totals.tech}</div>
-                <div class="dice-label">Tech</div>
-            </div>
-        `;
+    renderDice(totals, isAnimating = false, controlsEnabled = false) {
+        const types = [
+            { id: 'tac', label: 'Tactics', icon: '🎯', class: 'tactics', val: totals.tac, spent: this.gritSpent.tac },
+            { id: 'str', label: 'Strength', icon: '💪', class: 'strength', val: totals.str, spent: this.gritSpent.str },
+            { id: 'tech', label: 'Tech', icon: '🔧', class: 'tech', val: totals.tech, spent: this.gritSpent.tech }
+        ];
+
+        this.diceContainer.innerHTML = types.map(t => {
+            let controls = '';
+            let badge = '';
+            
+            if (controlsEnabled) {
+                controls = `
+                    <div class="grit-controls">
+                        <button class="grit-btn remove" onclick="combatUI.removeGrit('${t.id}')" ${t.spent > 0 ? '' : 'disabled'}>-</button>
+                        <button class="grit-btn add" onclick="combatUI.addGrit('${t.id}')" ${this.game.activePlayer.gritTokens > this.getTotalGritSpent() ? '' : 'disabled'}>+</button>
+                    </div>
+                `;
+            }
+            
+            if (t.spent > 0) {
+                badge = `<div class="grit-badge">+${t.spent}</div>`;
+            }
+
+            return `
+                <div class="dice-item ${t.class} ${isAnimating ? 'rolling' : ''}">
+                    ${controls}
+                    ${badge}
+                    <div class="dice-icon">${t.icon}</div>
+                    <div class="dice-value">${t.val}</div>
+                    <div class="dice-label">${t.label}</div>
+                </div>
+            `;
+        }).join('');
     }
 
     resolveCombat(rolledDice) {
@@ -298,8 +283,8 @@ export class CombatUI {
             tech: rolledDice.filter(d => d.type === 'tech').reduce((a,b) => a + b.value, 0) + this.gritSpent.tech
         };
 
-        // Update dice display with final totals including grit
-        this.renderDice({ tac: totals.tactics, str: totals.strength, tech: totals.tech });
+        // Update dice display with final totals including grit (no controls)
+        this.renderDice({ tac: totals.tactics, str: totals.strength, tech: totals.tech }, false, false);
 
         // Check requirements
         const enemy = this.combat.currentEncounter.enemy;
@@ -312,70 +297,38 @@ export class CombatUI {
         };
 
         let allMet = true;
-        const resolutionHTML = [];
-        const statConfig = {
-            tac: { label: 'Tactics', icon: '🎯' },
-            str: { label: 'Strength', icon: '💪' },
-            tech: { label: 'Tech', icon: '🔧' },
-            tactics: { label: 'Tactics', icon: '🎯' },
-            strength: { label: 'Strength', icon: '💪' }
-        };
-
         enemy.slots.forEach(slot => {
-            const playerValue = requirements[slot.type];
-            const met = playerValue >= slot.value;
-            if (!met) allMet = false;
-            
-            const config = statConfig[slot.type] || { label: slot.type, icon: '❓' };
-            
-            resolutionHTML.push(`
-                <div class="resolution-item ${met ? 'success' : 'failure'}" style="opacity: 0; animation: fadeIn 0.5s forwards">
-                    <div class="resolution-requirement">
-                        <span>${config.icon}</span>
-                        <span>${config.label.toUpperCase()}: ${slot.value}+ required</span>
-                    </div>
-                    <div class="resolution-result">
-                        ${playerValue} ${met ? '✅' : '❌'}
-                    </div>
-                </div>
-            `);
+            if (requirements[slot.type] < slot.value) allMet = false;
         });
 
-        this.resolutionContainer.innerHTML = resolutionHTML.join('');
+        this.resolutionContainer.innerHTML = ''; // Clear confirm button
         
-        // Staggered reveal of results? For now just show them. 
-        // Or we could animate them one by one.
-        
-        setTimeout(() => {
-            this.showResult(allMet);
-        }, 2000); // Wait 2 seconds before showing final result
+        // Immediate result
+        this.showResult(allMet);
     }
 
     showResult(victory) {
-        const resultPhase = document.getElementById('result-phase');
         const resultBanner = document.getElementById('result-banner');
-        const resultMessage = document.getElementById('result-message');
+        const resultActions = document.getElementById('result-actions');
         
-        resultPhase.classList.remove('hidden');
-        
+        // Setup banner content first
         if (victory) {
+            resultBanner.innerHTML = '<span class="result-banner-text">VICTORY</span>';
             resultBanner.className = 'result-banner victory';
-            resultBanner.textContent = 'VICTORY';
-            resultMessage.textContent = 'Enemy defeated! Rewards claimed.';
             
-            // Setup Claim Button
-            const actionsDiv = document.querySelector('.result-actions');
-            actionsDiv.innerHTML = `<button id="btn-claim-reward" class="action-btn primary">Claim Rewards</button>`;
+            resultActions.innerHTML = `<button id="btn-claim-reward" class="action-btn primary">✓ Claim Rewards</button>`;
             document.getElementById('btn-claim-reward').onclick = () => window.claimRewards();
         } else {
+            resultBanner.innerHTML = '<span class="result-banner-text">DEFEAT</span>';
             resultBanner.className = 'result-banner defeat';
-            resultBanner.textContent = 'DEFEAT';
-            resultMessage.textContent = 'You were overpowered. Resources lost.';
             
-            const actionsDiv = document.querySelector('.result-actions');
-            actionsDiv.innerHTML = `<button id="btn-accept-defeat" class="action-btn danger">Accept Defeat</button>`;
+            resultActions.innerHTML = `<button id="btn-accept-defeat" class="action-btn danger">Accept Defeat</button>`;
             document.getElementById('btn-accept-defeat').onclick = () => window.acceptDefeat();
         }
+        
+        // Trigger animation after setting class
+        void resultBanner.offsetWidth; // Force reflow
+        resultBanner.classList.add('animate');
     }
 
     handleRetreat() {
