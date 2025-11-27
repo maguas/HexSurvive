@@ -1,5 +1,5 @@
 # Xeno-Hex: Current Game Features
-**Live Status Document - Updated: November 22, 2025**
+**Live Status Document - Updated: November 27, 2025**
 
 This document tracks all currently implemented features in the game. It reflects the actual codebase state, not design goals.
 
@@ -43,14 +43,18 @@ This document tracks all currently implemented features in the game. It reflects
 4. **Player 2: Place Hero** - Same as step 2
 
 ### Starting Resources
-- **1 Fuel** per player
-- **Plus exploration rewards** from setup placement
+- **0 resources** per player initially
+- **Plus tile bonus**: 1 resource of tile type when placing outpost
+- **Plus exploration rewards** from hero placement (1 resource per revealed tile)
 
 ---
 
 ## Turn Structure
 
 ### Phase 1: Production
+- **Passive Income First**: Before dice roll, active player gains per owned outpost:
+  - +1 Fuel, +1 Food (standard outpost)
+  - +2 Fuel, +2 Food (fortress)
 - **Active Player rolls 2d6**
 - **Result 2-6, 8-12**: 
   - All tiles with matching number tokens produce resources
@@ -58,23 +62,22 @@ This document tracks all currently implemented features in the game. It reflects
     - Tiles adjacent to their hero location
     - Tiles with their owned outposts
   - Resources logged per player in game log
-- **Result 7**: No production (no special effect currently)
 - **Fortress tiles**: Produce 2x resources instead of 1x
 
 ### Phase 2: Action
 Players can perform actions:
-- **Move Hero** (costs 2 Fuel, free to outpost edges)
+- **Move Hero** (costs 2 Fuel per edge)
 - **Build Outpost** (costs resources)
 - **Upgrade to Fortress** (costs resources)
 - Other actions planned but not implemented
 
 ### Phase 3: End Turn
-- **Passive Income**: Each player gains per owned outpost:
-  - +1 Fuel
-  - +1 Food
-- **Food Consumption**: Based on distance from nearest outpost (partially implemented)
+- **Food Consumption**: Based on distance from nearest outpost
+  - Hero must consume food equal to hex distance from nearest outpost
+  - If insufficient food, hero returns to nearest outpost
 - **Switch to next player**
 - **Turn counter** increments when cycling back to Player 1
+- **Reset per-turn flags**: encountersResolved, extractedThisTurn, movedThisTurn
 
 ---
 
@@ -91,18 +94,22 @@ Players can perform actions:
 - **Free movement**: Moving to an edge adjacent to any outpost is free
 - **Movement validation**: Must move to adjacent edge (shares vertex)
 - **Adjacent tile production**: Produces from both tiles touching the hero's edge
+- **Movement restrictions**:
+  - Cannot move after extracting resources this turn
+  - Cannot move after resolving an encounter this turn
 - **Exploration mechanics**:
-  - Reveals unrevealed adjacent tiles
+  - Reveals unrevealed adjacent tiles (limit: 1 tile per move and turn)
   - Assigns number tokens to newly revealed tiles
-  - **Exploration Rewards**: Gain 1 resource per tile (even if already revealed)
-  - Draws encounter card for newly revealed tiles
+  - **Exploration Rewards**: Gain 1 resource per newly revealed tile
+  - Triggers encounter level selection for newly revealed tiles
   - 500ms delay before encounter modal appears
+  - **Encounter limit**: 1 encounter per turn
 
 ### Hero Stats
 - Health: 3
-- Base Stats: Tactics 1, Strength 1, Tech 1
+- Base Stats: Tactics 0, Strength 0, Tech 0 (start with no bonuses)
 - Stats increase only through equipped items (from defeated encounters)
-- Hand: Empty array (for future equipment)
+- **Gear Slots**: Suit and Weapon (2 equipment slots)
 
 ---
 
@@ -119,9 +126,11 @@ Players can perform actions:
 - **Production Roll**: When dice matches tile's number token
 - **Exploration Rewards**: 
   - When placing outpost: +1 resource of that tile type
-  - When placing/moving hero: +1 resource per adjacent revealed tile
-- **Passive Income**: +1 fuel, +1 food per owned outpost at turn end
-- **Fortress Bonus**: 2x production instead of 1x
+  - When placing/moving hero: +1 resource per newly revealed tile
+- **Passive Income**: +1 fuel, +1 food per owned outpost at turn start (before dice roll)
+- **Fortress Bonus**: 2x production and 2x passive income
+- **Extract Action**: Gain 2 resources per adjacent tile (costs 1 Fuel + 1 Food)
+- **Combat Rewards**: Resource rewards from defeated encounters
 
 ### Resource Tracking
 - **Per-player resources**: Each player has independent resource pools
@@ -170,33 +179,44 @@ Players can perform actions:
 ### Combat Resolution
 - **Slot-based system**: Enemies have defense slots with requirements
 - **Slot types**:
-  - **Specific**: Requires tactics/strength/tech dice
-  - **Any**: Can be filled with any dice type
-- **Dice rolling**: Player rolls dice based on hero stats
+  - **Tactics (tac)**: Yellow slots - requires tactics dice
+  - **Strength (str)**: Red slots - requires strength dice
+  - **Tech**: Blue slots - requires tech dice
+- **Dice rolling**: Player rolls 1d6 + stat bonus per stat type
+  - Tactics die: 1d6 + tactics stat (from gear)
+  - Strength die: 1d6 + strength stat (from gear)
+  - Tech die: 1d6 + tech stat (from gear)
+- **Grit Token System**:
+  - Earned on defeat (equal to VP lost)
+  - Can be spent before combat resolution to boost any dice
+  - UI shows +/- buttons per stat when grit available
 - **Animated resolution**:
-  - Step-by-step dice rolling with shake animation
-  - Color-coded enemy slots (Yellow/Red/Blue/Grey)
-  - Dice assignment visualization
-  - Result banner (Victory! / Defeat!)
+  - 1.5 second dice rolling animation
+  - Color-coded dice display (Yellow/Red/Blue)
+  - Result banner (VICTORY / DEFEAT)
 
-- ### Combat Results
- - **Victory**:
-   - Equipment loot (encounter card becomes equipment)
-   - Resource rewards (optional, card-specific)
-   - Card is tucked under hero card showing equipment bonuses
-   - Reward UI with claim button
- - **Defeat**:
-   - Hero returns to nearest outpost
-   - Hero is inactive for 2 turns
-   - **Death tally increases; on 3rd defeat the player is eliminated from the game**
-   - Threat increase (tracked)
+### Combat Results
+- **Victory**:
+  - **Victory Points**: +VP equal to encounter level (Level 1 = +1 VP, Level 2 = +2 VP, Level 3 = +3 VP)
+  - Equipment loot (gear equipped to suit or weapon slot)
+  - Resource rewards (optional, card-specific)
+  - Reward UI with claim button
+- **Defeat**:
+  - **VP Loss**: Lose VP equal to encounter level
+  - **Resource Loss**: Lose half of all resources
+  - **Grit Tokens**: Gain grit tokens equal to VP lost (defeat bonus)
+  - Hero marked inactive for 2 turns
+  - **Death tally increases; on 3rd defeat the player is eliminated from the game**
+  - Threat track increases
 
 ### Combat UI
-- **Fight/Retreat buttons** (retreat not implemented)
-- **Enemy information**: Name, level, slots display
-- **Dice area**: Shows player dice with colors
-- **Combat hint**: Shows required slots
-- **Step-by-step resolution**: Animated combat flow
+- **Fight/Retreat buttons** (retreat costs 1 Food)
+- **Enemy information**: Name, level, description, slots display
+- **Dice area**: Shows player dice with colors and animated rolling
+- **Grit Spending UI**: If player has grit tokens, can spend to boost dice before resolution
+- **Requirements display**: Color-coded slots (Tactics/Strength/Tech)
+- **Rewards preview**: Shows equipment and resource rewards before combat
+- **Step-by-step resolution**: Animated combat flow with result banner
 
 ---
 
@@ -243,12 +263,14 @@ Players can perform actions:
 - Phase validation prevents actions in wrong phase
 
 ### Victory Conditions
-- **Victory Points**: Tracked per player (currently visible in UI)
-- **Target**: 10 VP to win (not enforced yet)
+- **Victory Points**: Tracked per player (visible in UI)
+- **Target**: 10 VP to win (enforced with victory message)
 - **VP Sources**:
   - Outpost: +1 VP
   - Fortress: +1 VP (total 2 with outpost)
-  - Other sources planned but not implemented
+  - **Combat Victory**: +VP equal to encounter level (1/2/3)
+- **VP Loss**:
+  - Combat defeat: -VP equal to encounter level
 
 ### Threat System
 - **Threat Level**: 1-3 (displayed in UI)
@@ -300,24 +322,30 @@ Players can perform actions:
 ## Known Limitations / Not Implemented
 
 ### Partially Implemented
-- **Food consumption**: Distance calculation exists but consequences minimal
-- **Hero defeat**: Returns to outpost but 2-turn inactive period not enforced
+- **Food consumption**: Distance calculation exists, hero returns to outpost if insufficient food
+- **Hero defeat**: Inactive turns tracked but not fully enforced in action restrictions
 - **Threat consequences**: Level 3+ game over not enforced
-- **Equipment system**: Cards tracked but not integrated into stat calculations
+- **Player elimination**: 3 defeats eliminates player, winner by elimination implemented
 
 ### Not Yet Implemented
-- Trading system
-- Equipment stat bonuses affecting combat
 - Co-op combat assistance
 - Secret objectives
 - Xeno-nests
 - Boss encounters
-- Resource trading (bank/players)
+- Resource trading between players
 
 ### Removed Features
 - **XP/Leveling system**: Replaced with equipment-only progression
 - **Alien Patrols**: Removed for now (may return in future iteration)
-- **Roll 7 effects**: Currently has no effect (previously patrol movement)
+
+### Recently Added Features
+- **Grit Token System**: Earned on defeat, spent to boost combat dice
+- **Extract Action**: New action to gather resources from adjacent tiles
+- **Encounter Level Selection**: Player chooses difficulty (1/2/3) when revealing tiles
+- **VP from Combat**: Victory points scale with encounter level
+- **Invasion Event (Roll 7)**: Increases threat, forces resource discard
+- **Move/Extract Restrictions**: Cannot move after extracting or vice versa
+- **Encounter Limit**: 1 encounter per turn maximum
 
 ---
 
@@ -344,6 +372,6 @@ Players can perform actions:
 
 ---
 
-**Last Updated**: November 22, 2025
-**Status**: Multiplayer prototype with core mechanics functional
-**Next Priority**: Complete threat system, alien patrol UI, hero progression
+**Last Updated**: November 27, 2025
+**Status**: Multiplayer prototype with core mechanics functional, grit token system, and encounter level selection
+**Next Priority**: Complete threat system consequences, co-op combat, trading system

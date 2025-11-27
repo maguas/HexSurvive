@@ -1,6 +1,6 @@
 # Xeno-Hex: Board Game Pieces
 **Component List for 4-Player Physical Edition**
-*Based on Current Game Features - Updated: November 22, 2025*
+*Based on Current Game Features - Updated: November 27, 2025*
 
 ---
 
@@ -12,10 +12,8 @@
 - **Board Layout**: Roughly 7x7 hex grid pattern
 - **Estimated Board Size**: ~18" x 20" (45cm x 50cm) play area
 - **Material**: Thick cardboard (2mm+) with full-color printing
-- **Design**: 
-  - Double-sided preferred (different layouts for variety)
-  - **Back side displays Encounter Level (1, 2, or 3)** so players can strategize where to place outposts/explore
-  - Numbers printed on tiles (not separate tokens)
+- **Design**:   
+  - Numbers printed on revealed side (not separate tokens)
   - Clear terrain type iconography
   - Dark/foggy appearance for unrevealed side with level indicator badge
 
@@ -26,7 +24,7 @@ Based on balanced resource generation:
 - **Overgrown** (Food): 7 tiles - Numbers: 3, 4, 5, 6, 8, 9, 10
 - **Crash Site** (Alloy): 6 tiles - Numbers: 4, 5, 6, 8, 9, 10
 - **Bunker** (Intel): 6 tiles - Numbers: 4, 5, 6, 8, 9, 10
-- **Barren**: 4 tiles - No production (hazard/combat tiles)
+- **Barren**: 4 tiles - No production
 
 *Note: More 6s and 8s for higher probability, fewer 3s and 10s for rarity*
 
@@ -42,8 +40,8 @@ Based on balanced resource generation:
 - **Standing position**: Must be stable on edge of hex tiles
 - **Base design**: Small rectangular base (~15mm x 8mm) to fit on hex edges
 
-### Outpost Figures (20 total - 5 per player)
-- **Quantity**: 5 per player × 4 players = 20 pieces
+### Outpost Figures (12 total - 3 per player)
+- **Quantity**: 3 per player × 4 players = 12 pieces
 - **Size**: ~15mm diameter, 12-15mm height
 - **Design**: Small fortified bunker/settlement structure
 - **Color-coded**: Red, Blue, Green, Yellow (matching player colors)
@@ -51,8 +49,8 @@ Based on balanced resource generation:
 - **Base**: Circular base to fit on hex tile corners/centers
 - **Visual**: Should look like small defensive structures
 
-### Fortress Figures (20 total - 5 per player)
-- **Quantity**: 5 per player × 4 players = 20 pieces
+### Fortress Figures (12 total - 3 per player)
+- **Quantity**: 3 per player × 4 players = 12 pieces
 - **Size**: ~18mm diameter, 18-22mm height (taller than outposts)
 - **Design**: Larger fortified structure with towers/walls
 - **Color-coded**: Red, Blue, Green, Yellow (matching player colors)
@@ -62,38 +60,38 @@ Based on balanced resource generation:
 
 ---
 
-## Resource Tokens
+## Resource Cards
 
-### Token Specifications
-- **Material**: Wooden discs with screen-printed icons
-- **Size**: 15-18mm diameter, 3-4mm thick
-- **Design**: Color-coded with matching resource icons from hex tiles
-- **Icons**:
-  - 🔩 Scrap (grey disc, wrench/gear icon)
-  - ⚡ Fuel (orange disc, lightning/battery icon)
-  - 🍏 Food (green disc, apple/plant icon)
-  - 🔮 Alloy (purple disc, crystal/tech icon)
-  - 💾 Intel (blue disc, data/chip icon)
+### Resource Card Design (95 total cards)
+- **Material**: Mini card stock (similar to Catan)
+- **Size**: 1.75" x 2.5" (mini card size)
+- **Card Stock**: 300gsm card stock with finish coating
+- **Design per resource type**:
+  - Scrap (grey card, wrench/gear icon)
+  - Fuel (orange card, lightning/battery icon)
+  - Food (green card, apple/plant icon)
+  - Alloy (purple card, crystal/tech icon)
+  - Intel (blue card, data/chip icon)
 - **Cost Analysis**: 
-  - Wooden discs with printed icons: ~$0.05-0.10 per piece (chosen option)
-  - Cardboard tokens alternative: ~$0.01-0.03 per piece (budget option)
-  - Acrylic with icons: ~$0.12-0.20 per piece (deluxe edition)
+  - Mini cards: ~$0.02-0.04 per piece (chosen option)
+  - Wooden discs alternative: ~$0.05-0.10 per piece (premium option)
 - **Advantages**: 
-  - Instant visual recognition
+  - Lower manufacturing cost
+  - Familiar Catan-style system
+  - Easy to count and organize
   - Color-blind accessible (icon + color)
-  - Professional premium feel
-  - Stack easily for storage
+  - Lighter shipping weight
 
-### Resource Token Quantities
+### Resource Card Quantities
 Based on Catan-style resource economy for 4-player game:
 
-- **Scrap (Grey)**: 19 tokens
-- **Fuel (Orange)**: 19 tokens  
-- **Food (Green)**: 19 tokens
-- **Alloy (Purple)**: 19 tokens
-- **Intel (Blue)**: 19 tokens
+- **Scrap (Grey)**: 19 cards
+- **Fuel (Orange)**: 19 cards  
+- **Food (Green)**: 19 cards
+- **Alloy (Purple)**: 19 cards
+- **Intel (Blue)**: 19 cards
 
-**Total Resource Tokens**: 95 pieces
+**Total Resource Cards**: 95 pieces
 
 *Note: Equal distribution per resource type, matching Catan's proven resource economy (19 per type for 5 resources)*
 
@@ -107,89 +105,52 @@ Based on Catan-style resource economy for 4-player game:
 - **Color**: White or neutral color
 - **Use**: Production phase dice rolling (2d6 for resource generation)
 
-### Combat Dice (12 dice - 3 per player)
-- **Quantity per player**: 3 dice (1 Yellow, 1 Red, 1 Blue)
-- **Total**: 12 dice for 4 players
+### Combat Dice (3 dices shared between players)
 - **Size**: Standard 16mm d6
 - **Colors**:
-  - **Yellow dice** (Tactics): 4 dice
-  - **Red dice** (Strength): 4 dice  
-  - **Blue dice** (Tech): 4 dice
+  - **Yellow dice** (Tactics): 1 dice
+  - **Red dice** (Strength): 1 dice  
+  - **Blue dice** (Tech): 1 dice
 - **Design**: Standard d6 (1-6 pips)
-- **Combat System**: Roll fixed dice set, add modifiers from levels/gear
-
----
-
-## Player Boards & Tracking
-
-### Player Boards (4 total - 1 per player)
-- **Size**: ~8" x 10" (20cm x 25cm)
-- **Material**: Thick cardboard with finish coating
-- **Design includes**:
-  - Resource storage areas with icons (5 types)
-  - Hero stat tracking (Tactics, Strength, Tech) - base stats only, modifiers from equipment
-  - Health tracker (3 health points)
-  - Inactive turns tracker (0-2 turns when defeated)
-  - **Death tally track (0-3 skull icons)**: eliminate player after 3 defeats
-  - Victory Point tracker (0-10)
-  - **Equipment card tuck zones**: Designated areas on sides/bottom where defeated encounter cards can be tucked to show equipment bonuses
-  - Equipment slot indicators: Head, Body, Weapon, Tech (for card placement)
-  - Player color prominently displayed
-- **Color-coded**: Red, Blue, Green, Yellow borders
-- **Note**: Hero card sits in center with defeated encounter cards tucked around edges showing equipment stats
+- **Combat System**: Roll 1d6 per stat type, add stat bonus from gear to result
+- **Grit Boost**: Grit tokens can be spent to add +1 per token to any die result
 
 ---
 
 ## Tokens & Markers
 
+### Grit Tokens (20 pieces)
+- **Material**: Black semi-transparent acrylic cubes
+- **Size**: 8mm cubes
+- **Quantity**: 20 tokens (5 per player max expected)
+- **Design**: Smoky black with subtle skull etching
+- **Use**: Earned on combat defeat (equal to VP lost), spent to boost combat dice (+1 per token to any die)
+
 ### Victory Point Tokens (40 pieces)
-- **Material**: Cardboard or wooden discs
+- **Material**: Green cardboard discs
 - **Size**: 15mm diameter
 - **Design**: VP symbol, numbered (1 VP, 5 VP variants)
 - **Quantity**: 
-  - 20x "1 VP" tokens
-  - 8x "5 VP" tokens
+  - 28x "1 VP" tokens
+  - 12x "5 VP" tokens
   - (Max 10 VP per player, but tokens for visibility)
-
-### Threat Track Marker (1 piece)
-- **Material**: Wooden or plastic pawn/standee
-- **Size**: ~20mm height
-- **Color**: Red or ominous color
-- **Use**: Tracks current threat level (1-3) and track position (0-5)
-
-### Turn Counter Token (1 piece)
-- **Material**: Wooden disc or cardboard token
-- **Size**: 20mm diameter
-- **Use**: Tracks current turn number
-
-### Inactive Hero Markers (4 pieces - 1 per player)
-- **Material**: Cardboard tokens or clips
-- **Size**: 20mm diameter
-- **Color-coded**: Matching player colors
-- **Design**: "Inactive" or crossed-out hero icon with turn counter (1-2)
-- **Use**: Placed on player board when hero is defeated, tracking 2 inactive turns
-
-### Death Tracker Clips (4 pieces - 1 per player)
-- **Material**: Plastic clip or wooden slider
-- **Size**: Sized to fit death tally track on player board
-- **Design**: Skull icon clip that moves across 0-3 defeats
-- **Use**: Advances each time a hero dies; eliminate player after third defeat
+- **VP Sources**: Outposts (+1), Fortresses (+1 more), Combat victories (+1/2/3 based on encounter level)
 
 ---
 
 ## Cards
 
-### Encounter Cards (60-90 cards)
+### Encounter Cards (45-60 cards)
 - **Size**: Standard poker size (2.5" x 3.5")
 - **Material**: 300gsm card stock with linen finish
 - **Card backs**: Level-specific designs (Level 1, 2, 3)
 - **Distribution**:
-  - **Level 1 Deck**: 25-30 cards (basic encounters)
-  - **Level 2 Deck**: 20-25 cards (medium encounters)
-  - **Level 3 Deck**: 15-20 cards (boss/hard encounters)
+  - **Level 1 Deck**: 20-25 cards (basic encounters)
+  - **Level 2 Deck**: 15-20 cards (medium encounters)
+  - **Level 3 Deck**: 10-15 cards (boss/hard encounters)
 - **Card Layout** (One Deck Dungeon style):
   - **Left side (~30% of card)**: Equipment/Loot information
-    - Equipment slot icons (Head/Body/Weapon/Tech)
+    - Equipment slot icons (Suit/Weapon)
     - Stat modifiers (+X Tactics/Strength/Tech)
     - Special abilities (if any)
     - Item name
@@ -218,27 +179,6 @@ Based on Catan-style resource economy for 4-player game:
 - **Material**: 300gsm card stock
 - **Content**: Quick reference for turn structure, costs, and rules
 - **Quantity**: 1 per player
-
----
-
-## Game Board Accessories
-
-### Threat Track Board
-- **Size**: ~6" x 2" (15cm x 5cm) strip
-- **Material**: Thick cardboard
-- **Design**: 
-  - Three level sections (1, 2, 3)
-  - Five spaces per level (0-5 track)
-  - Clear markings for threat progression
-  - Visual escalation (colors getting more ominous)
-
-### Turn/Phase Tracker (optional)
-- **Size**: ~4" x 3" mini-board
-- **Material**: Cardboard
-- **Design**: Shows current phase (Production, Action, End Turn)
-- **Alternative**: Printed on main board or reference cards
-
----
 
 ## Storage & Packaging
 
@@ -287,21 +227,16 @@ Based on Catan-style resource economy for 4-player game:
 |-----------|----------|----------|
 | **Hex Tiles** | 37 | Cardboard |
 | **Hero Miniatures** | 4 | Plastic/Resin |
-| **Outpost Miniatures** | 20 | Plastic |
-| **Fortress Miniatures** | 20 | Plastic |
-| **Resource Tokens** | 95 | Wooden discs w/ icons |
+| **Outpost Miniatures** | 12 | Plastic |
+| **Fortress Miniatures** | 12 | Plastic |
+| **Resource Cards** | 95 | Mini card stock |
 | **Production Dice (d6)** | 2 | Plastic |
-| **Combat Dice (colored d6)** | 12 | Plastic |
-| **Player Boards** | 4 | Cardboard |
-| **VP Tokens** | 40 | Wooden/Cardboard |
-| **Threat Marker** | 1 | Wooden |
-| **Turn Counter** | 1 | Wooden |
-| **Inactive Hero Markers** | 4 | Cardboard |
-| **Death Tracker Clips** | 4 | Plastic/Wood |
-| **Encounter Cards** | 60-90 | Card stock (dual-purpose) |
+| **Combat Dice (colored d6)** | 3 | Plastic |
+| **Grit Tokens** | 20 | Acrylic cubes (black) |
+| **VP Tokens** | 40 | Cardboard discs (green) |
+| **Encounter Cards** | 45-60 | Card stock (dual-purpose) |
 | **Hero Cards** | 4 | Card stock |
 | **Reference Cards** | 4 | Card stock |
-| **Threat Track Board** | 1 | Cardboard |
 | **Rulebook** | 1 | Booklet |
 
 ---
@@ -309,20 +244,19 @@ Based on Catan-style resource economy for 4-player game:
 ## Manufacturing Cost Estimates (Prototype/Small Run)
 
 ### Budget Breakdown (per unit, estimated)
-- **Miniatures (44 pieces)**: $7-14 *(reduced - no patrol figures)*
+- **Miniatures (28 pieces)**: $5-10 *(4 heroes + 12 outposts + 12 fortresses)*
 - **Hex tiles (37 pieces)**: $5-8
-- **Resource tokens (95 wooden discs w/ icons)**: $5-10 *(reduced - Catan quantities)*
-- **Other wooden components (45 pieces)**: $2-4 *(reduced - no XP cubes)*
-- **Dice (14 pieces)**: $3-5
-- **Cards (68-98 pieces)**: $4-7 *(dual-purpose encounter cards)*
-- **Player boards (4 pieces)**: $4-6
-- **Cardboard tokens/boards**: $2-4 *(reduced - fewer tokens)*
-- **Box and insert**: $4-7
+- **Resource cards (95 mini cards)**: $2-4 *(mini card stock, Catan-style)*
+- **Acrylic tokens (20 pieces)**: $2-3 *(grit tokens only, premium black cubes)*
+- **Cardboard tokens (40 pieces)**: $0.50-1 *(VP tokens, green discs)*
+- **Dice (5 pieces)**: $1-2 *(2 production + 3 combat)*
+- **Cards (49-64 pieces)**: $3-5 *(reduced encounter deck 45-60 + 4 hero + 4 reference)*
+- **Box and insert**: $3-5 *(compact size)*
 - **Rulebook**: $2-4
 
-**Estimated Total Cost Per Unit**: $38-69 (small run of 100-500 units)
+**Estimated Total Cost Per Unit**: $24-42 (small run of 100-500 units)
 
-*Savings from streamlined design: ~$7-10 per unit vs original design*
+*Budget-optimized design: Resource cards instead of tokens, premium acrylic grit tokens*
 
 *Note: Costs decrease significantly with larger print runs (1000+ units)*
 
@@ -351,23 +285,23 @@ Only heroes, outposts, and fortresses are 3D pieces to:
   - Less table space and storage needed
   - Simpler than XP tracking
 
-### Token Economy Design
+### Resource Card Economy Design
 - **Catan-style resource quantities**: 19 per resource type (95 total)
 - Proven resource economy that creates strategic scarcity without frustration
-- Wooden discs with icons chosen for:
+- Mini cards chosen for:
+  - Lower manufacturing cost ($2-4 vs $5-10 for wooden)
+  - Familiar system (Catan uses cards)
+  - Easy to count and organize in hand
   - Clear visual identification and accessibility
-  - Premium tactile feel at reasonable cost
-  - Easy stacking and storage
 - Equal distribution across all 5 resource types for balanced gameplay
 
 ### Board Size Considerations
 - 18" x 20" play area fits standard table space
 - 37 hex tiles with 2.5" size allows clear visibility and placement
-- Leaves room for player boards on sides
 - Hex size accommodates miniature bases comfortably
 
 ---
 
-**Last Updated**: November 22, 2025
-**Status**: Component list based on implemented features
-**Manufacturing**: Ready for prototype production quotes
+**Last Updated**: November 27, 2025
+**Status**: Budget-optimized component list - resource cards, premium acrylic grit tokens, 3 outposts/fortresses per player
+**Manufacturing**: Ready for prototype production quotes - Target cost $28-48 per unit
