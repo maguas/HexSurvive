@@ -10,25 +10,13 @@ function getCanvasSize() {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
-    // Calculate sidebar widths based on media queries
-    let leftSidebar, rightSidebar;
-    if (viewportWidth <= 900) {
-        leftSidebar = 180;
-        rightSidebar = 200;
-    } else if (viewportWidth <= 1024) {
-        leftSidebar = 200;
-        rightSidebar = 220;
-    } else if (viewportWidth <= 1200) {
-        leftSidebar = 220;
-        rightSidebar = 240;
-    } else {
-        leftSidebar = 280;
-        rightSidebar = 300;
-    }
+    // Calculate sidebar widths based on CSS grid-template-columns: 240px 1fr 240px
+    let leftSidebar = 240;
+    let rightSidebar = 240;
     
-    // Available space for canvas (subtract sidebars and padding)
+    // Available space for canvas (subtract sidebars, top bar ~40px, and padding)
     const availableWidth = viewportWidth - leftSidebar - rightSidebar - 30;
-    const availableHeight = viewportHeight - 50;
+    const availableHeight = viewportHeight - 80;
     
     // For a hex grid with radius 3 (7 hexes diameter):
     // Width needs: ~7 * hexSize * sqrt(3) ≈ 12.1 * hexSize
@@ -166,9 +154,6 @@ function updateUI() {
         phaseDisplay.textContent = phaseText;
         phaseDisplay.style.color = game.activePlayer.color;
     }
-
-    // Threat Level
-    document.getElementById('threat-value').textContent = `${game.threatLevel} (Track: ${game.threatTrack}/5)`;
 
     // Hero
     const hero = game.hero;

@@ -9,51 +9,40 @@
 </head>
 
 <body>
+    <!-- TOP RESOURCE BAR -->
+    <div id="top-bar">
+        <div class="top-bar-left">
+            <span class="game-title">XENO-HEX</span>
+            <span class="vp-display">VP: <span id="vp-count" class="vp-value">0</span>/10</span>
+        </div>
+        <div id="resource-bar">
+            <div class="resource-item" title="Scrap">
+                <span class="icon">🔩</span>
+                <span id="res-scrap" class="res-value">0</span>
+            </div>
+            <div class="resource-item" title="Fuel">
+                <span class="icon">⚡</span>
+                <span id="res-fuel" class="res-value">0</span>
+            </div>
+            <div class="resource-item" title="Food">
+                <span class="icon">🍏</span>
+                <span id="res-food" class="res-value">0</span>
+            </div>
+            <div class="resource-item" title="Alloy">
+                <span class="icon">🔮</span>
+                <span id="res-alloy" class="res-value">0</span>
+            </div>
+            <div class="resource-item" title="Intel">
+                <span class="icon">💾</span>
+                <span id="res-intel" class="res-value">0</span>
+            </div>
+            <button id="btn-trade" class="trade-btn" title="Trade Resources">🔄</button>
+        </div>
+    </div>
+
     <div id="game-container">
-        <!-- LEFT SIDEBAR: Resources & VP -->
+        <!-- LEFT SIDEBAR: Actions -->
         <aside id="sidebar-left">
-            <div class="panel header-panel">
-                <h1>XENO-HEX</h1>
-                <div class="vp-display">
-                    <span class="vp-label">Victory Points:</span>
-                    <span id="vp-count" class="vp-value">0</span> / 10
-                </div>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header-row">
-                    <h2>📦 Resources</h2>
-                    <button id="btn-trade" class="trade-btn" title="Trade Resources">🔄</button>
-                </div>
-                <div id="resource-display">
-                    <div class="resource-item">
-                        <span class="icon" title="Scrap">🔩</span>
-                        <span class="res-name">Scrap</span>
-                        <span id="res-scrap" class="res-value">0</span>
-                    </div>
-                    <div class="resource-item">
-                        <span class="icon" title="Fuel">⚡</span>
-                        <span class="res-name">Fuel</span>
-                        <span id="res-fuel" class="res-value">0</span>
-                    </div>
-                    <div class="resource-item">
-                        <span class="icon" title="Food">🍏</span>
-                        <span class="res-name">Food</span>
-                        <span id="res-food" class="res-value">0</span>
-                    </div>
-                    <div class="resource-item">
-                        <span class="icon" title="Alloy">🔮</span>
-                        <span class="res-name">Alloy</span>
-                        <span id="res-alloy" class="res-value">0</span>
-                    </div>
-                    <div class="resource-item">
-                        <span class="icon" title="Intel">💾</span>
-                        <span class="res-name">Intel</span>
-                        <span id="res-intel" class="res-value">0</span>
-                    </div>
-                </div>
-            </div>
-
             <div class="panel">
                 <h2>⚡ Actions</h2>
                 <button id="btn-roll-dice" class="action-btn primary">🎲 Roll Dice</button>
@@ -79,9 +68,6 @@
 
         <!-- MAIN BOARD AREA -->
         <main id="board-area">
-            <div id="threat-level">
-                Threat Level: <span id="threat-value">1</span>
-            </div>
             <canvas id="hex-grid-canvas"></canvas>
             <div id="dice-result" class="overlay-message hidden">
                 <div class="dice-display">
