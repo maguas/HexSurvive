@@ -5,27 +5,41 @@ import { IsometricView } from './isometric_view.js';
 import { CombatUI } from './combat_ui.js';
 import { ACTION_COSTS, getCostDisplayData, canAfford } from './action_costs.js';
 
-// Calculate responsive canvas size based on viewport
+// Calculate responsive canvas size based on available board area
 function getCanvasSize() {
     const viewportWidth = window.innerWidth;
-    // Base sizes for desktop
-    let width = 900;
-    let height = 650;
-    let hexSize = 60;
+    const viewportHeight = window.innerHeight;
     
+    // Calculate sidebar widths based on media queries
+    let leftSidebar, rightSidebar;
     if (viewportWidth <= 900) {
-        width = Math.min(viewportWidth - 380, 550);
-        height = Math.min(window.innerHeight - 40, 480);
-        hexSize = 45;
+        leftSidebar = 180;
+        rightSidebar = 200;
     } else if (viewportWidth <= 1024) {
-        width = Math.min(viewportWidth - 420, 650);
-        height = Math.min(window.innerHeight - 40, 550);
-        hexSize = 50;
+        leftSidebar = 200;
+        rightSidebar = 220;
     } else if (viewportWidth <= 1200) {
-        width = Math.min(viewportWidth - 460, 750);
-        height = Math.min(window.innerHeight - 40, 600);
-        hexSize = 55;
+        leftSidebar = 220;
+        rightSidebar = 240;
+    } else {
+        leftSidebar = 280;
+        rightSidebar = 300;
     }
+    
+    // Available space for canvas (subtract sidebars and padding)
+    const availableWidth = viewportWidth - leftSidebar - rightSidebar - 30;
+    const availableHeight = viewportHeight - 50;
+    
+    // For a hex grid with radius 3 (7 hexes diameter):
+    // Width needs: ~7 * hexSize * sqrt(3) ≈ 12.1 * hexSize
+    // Height needs: ~7 * hexSize * 1.5 + hexSize ≈ 11.5 * hexSize (with isometric scaling)
+    const hexSizeByWidth = Math.floor(availableWidth / 12.5);
+    const hexSizeByHeight = Math.floor(availableHeight / 10);
+    const hexSize = Math.max(30, Math.min(hexSizeByWidth, hexSizeByHeight, 60)); // Min 30, max 60
+    
+    // Canvas size to fit the hex grid with padding
+    const width = Math.floor(hexSize * 12.5);
+    const height = Math.floor(hexSize * 10);
     
     return { width, height, hexSize };
 }
