@@ -5,9 +5,36 @@ import { IsometricView } from './isometric_view.js';
 import { CombatUI } from './combat_ui.js';
 import { ACTION_COSTS, getCostDisplayData, canAfford } from './action_costs.js';
 
+// Calculate responsive canvas size based on viewport
+function getCanvasSize() {
+    const viewportWidth = window.innerWidth;
+    // Base sizes for desktop
+    let width = 900;
+    let height = 650;
+    let hexSize = 60;
+    
+    if (viewportWidth <= 900) {
+        width = Math.min(viewportWidth - 380, 550);
+        height = Math.min(window.innerHeight - 40, 480);
+        hexSize = 45;
+    } else if (viewportWidth <= 1024) {
+        width = Math.min(viewportWidth - 420, 650);
+        height = Math.min(window.innerHeight - 40, 550);
+        hexSize = 50;
+    } else if (viewportWidth <= 1200) {
+        width = Math.min(viewportWidth - 460, 750);
+        height = Math.min(window.innerHeight - 40, 600);
+        hexSize = 55;
+    }
+    
+    return { width, height, hexSize };
+}
+
+const canvasSize = getCanvasSize();
+
 // Initialize game systems
 const game = new GameManager();
-const grid = new HexGrid('hex-grid-canvas', 900, 650);
+const grid = new HexGrid('hex-grid-canvas', canvasSize.width, canvasSize.height, canvasSize.hexSize);
 const isoView = new IsometricView('hex-grid-canvas', grid);
 const combat = new CombatSystem(game);
 const combatUI = new CombatUI(combat, game);

@@ -1008,3 +1008,800 @@ aside {
     font-size: 1.5rem;
     margin: 10px 0;
 }
+
+/* ==================== RESPONSIVE STYLES FOR TABLET (iPad) ==================== */
+@media screen and (max-width: 1200px) {
+    #game-container {
+        grid-template-columns: 220px 1fr 240px;
+    }
+    
+    aside {
+        padding: 0.75rem;
+        gap: 0.75rem;
+    }
+    
+    .panel {
+        padding: 10px;
+    }
+    
+    .header-panel h1 {
+        font-size: 1.3rem;
+        margin-bottom: 6px;
+    }
+    
+    .vp-display {
+        font-size: 0.95rem;
+    }
+    
+    .vp-value {
+        font-size: 1.2rem;
+    }
+    
+    .panel h2 {
+        font-size: 0.95rem;
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+    }
+    
+    /* Resources */
+    .resource-item {
+        gap: 6px;
+        margin-bottom: 6px;
+        padding: 5px;
+    }
+    
+    .resource-item .icon {
+        font-size: 1rem;
+    }
+    
+    .res-name {
+        font-size: 0.85rem;
+    }
+    
+    .res-value {
+        font-size: 0.95rem;
+        min-width: 25px;
+    }
+    
+    /* Actions */
+    .action-btn {
+        padding: 8px;
+        margin-bottom: 6px;
+        font-size: 0.85rem;
+    }
+    
+    .btn-cost {
+        font-size: 0.75rem;
+    }
+    
+    /* Hero Card */
+    .hero-name {
+        font-size: 1.1rem;
+    }
+    
+    .hero-status {
+        margin: 8px 0;
+        padding: 8px;
+    }
+    
+    .status-eliminated {
+        font-size: 1rem;
+        padding: 8px;
+    }
+    
+    .death-counter {
+        font-size: 0.8rem;
+    }
+    
+    .hero-stats {
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+    
+    .stat-item {
+        padding: 5px;
+    }
+    
+    .stat-label {
+        font-size: 0.8rem;
+    }
+    
+    .stat-value {
+        font-size: 0.95rem;
+    }
+    
+    .hero-gear h3 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+    
+    .gear-item {
+        font-size: 0.8rem;
+    }
+    
+    .hero-grit {
+        margin-top: 8px;
+        padding: 6px;
+    }
+    
+    .grit-value {
+        font-size: 1rem;
+    }
+    
+    /* Game Log */
+    #game-log {
+        font-size: 0.75rem;
+        height: 180px;
+        padding: 6px;
+    }
+    
+    .log-entry {
+        margin-bottom: 4px;
+        padding-bottom: 4px;
+    }
+    
+    /* Threat Level */
+    #threat-level {
+        top: 10px;
+        left: 10px;
+        padding: 6px 12px;
+        font-size: 0.85rem;
+    }
+    
+    /* Dice Overlay */
+    .overlay-message {
+        padding: 20px 35px;
+        font-size: 1.5rem;
+    }
+    
+    .dice-display {
+        gap: 15px;
+        font-size: 2.5rem;
+    }
+    
+    #roll-total {
+        font-size: 1.2rem;
+    }
+    
+    /* Combat Modal */
+    .combat-modal-content {
+        max-width: 500px;
+        padding: 20px;
+    }
+    
+    .combat-header h2 {
+        font-size: 1.4rem;
+    }
+    
+    .encounter-level-badge {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+    
+    .encounter-info {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .encounter-name {
+        font-size: 1.4rem;
+    }
+    
+    .encounter-description {
+        font-size: 0.85rem;
+    }
+    
+    .requirements-section,
+    .rewards-section {
+        margin-bottom: 15px;
+        padding: 15px;
+    }
+    
+    .requirements-section h3,
+    .rewards-section h3 {
+        font-size: 0.9rem;
+        margin-bottom: 12px;
+    }
+    
+    .requirements-list {
+        gap: 10px;
+    }
+    
+    .requirement-item {
+        padding: 10px 15px;
+        min-width: 75px;
+    }
+    
+    .requirement-icon {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+    
+    .requirement-value {
+        font-size: 1.2rem;
+    }
+    
+    .requirement-label {
+        font-size: 0.65rem;
+    }
+    
+    .gear-reward {
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .resource-reward-item {
+        padding: 6px 10px;
+        font-size: 0.85rem;
+    }
+    
+    .modal-actions {
+        gap: 10px;
+    }
+    
+    .action-btn {
+        padding: 10px 16px;
+        font-size: 0.95rem;
+    }
+    
+    /* Level Select Modal */
+    .level-select-content {
+        max-width: 420px;
+    }
+    
+    .level-buttons {
+        gap: 10px;
+    }
+    
+    .level-btn {
+        padding: 15px 20px;
+        min-width: 85px;
+    }
+    
+    .level-number {
+        font-size: 1.6rem;
+    }
+    
+    .level-label {
+        font-size: 0.8rem;
+    }
+    
+    .level-vp {
+        font-size: 0.75rem;
+    }
+    
+    /* Grit Spending */
+    .grit-spending {
+        padding: 12px;
+    }
+    
+    .grit-controls {
+        gap: 10px;
+    }
+    
+    .grit-stat {
+        gap: 6px;
+        padding: 6px 10px;
+    }
+    
+    .grit-stat .grit-label {
+        min-width: 100px;
+        font-size: 0.85rem;
+    }
+    
+    .grit-btn {
+        width: 24px;
+        height: 24px;
+        font-size: 0.95rem;
+    }
+    
+    /* Trade Modal */
+    .trade-modal-content {
+        min-width: 280px;
+    }
+    
+    .trade-section select {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    #game-container {
+        grid-template-columns: 200px 1fr 220px;
+    }
+    
+    aside {
+        padding: 0.6rem;
+        gap: 0.6rem;
+    }
+    
+    .panel {
+        padding: 8px;
+    }
+    
+    .header-panel h1 {
+        font-size: 1.2rem;
+        letter-spacing: 1px;
+    }
+    
+    .vp-display {
+        font-size: 0.9rem;
+    }
+    
+    .vp-value {
+        font-size: 1.1rem;
+    }
+    
+    .panel h2 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+    
+    /* Resources */
+    .resource-item {
+        gap: 5px;
+        margin-bottom: 5px;
+        padding: 4px;
+    }
+    
+    .resource-item .icon {
+        font-size: 0.9rem;
+    }
+    
+    .res-name {
+        font-size: 0.8rem;
+    }
+    
+    .res-value {
+        font-size: 0.9rem;
+    }
+    
+    /* Actions */
+    .action-btn {
+        padding: 7px;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+    }
+    
+    .btn-label {
+        margin-bottom: 2px;
+    }
+    
+    .btn-cost {
+        font-size: 0.7rem;
+        gap: 4px;
+    }
+    
+    /* Hero Card */
+    .hero-name {
+        font-size: 1rem;
+    }
+    
+    .hero-status {
+        margin: 6px 0;
+        padding: 6px;
+    }
+    
+    .status-inactive {
+        padding: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .status-eliminated {
+        font-size: 0.9rem;
+        padding: 6px;
+    }
+    
+    .death-counter {
+        font-size: 0.75rem;
+    }
+    
+    .hero-stats {
+        gap: 5px;
+        margin-bottom: 8px;
+    }
+    
+    .stat-item {
+        padding: 4px;
+    }
+    
+    .stat-label {
+        font-size: 0.75rem;
+    }
+    
+    .stat-value {
+        font-size: 0.9rem;
+    }
+    
+    .hero-gear h3 {
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+    }
+    
+    .gear-item {
+        font-size: 0.75rem;
+        margin-bottom: 3px;
+    }
+    
+    .hero-grit {
+        margin-top: 6px;
+        padding: 5px;
+    }
+    
+    .grit-label {
+        font-size: 0.85rem;
+    }
+    
+    .grit-value {
+        font-size: 0.95rem;
+    }
+    
+    /* Phase Indicator */
+    .phase-indicator {
+        font-size: 0.85rem;
+    }
+    
+    /* Game Log */
+    #game-log {
+        font-size: 0.7rem;
+        height: 150px;
+        padding: 5px;
+    }
+    
+    .log-entry {
+        margin-bottom: 3px;
+        padding-bottom: 3px;
+        line-height: 1.3;
+    }
+    
+    /* Threat Level */
+    #threat-level {
+        padding: 5px 10px;
+        font-size: 0.8rem;
+    }
+    
+    /* Dice Overlay */
+    .overlay-message {
+        padding: 18px 30px;
+        font-size: 1.3rem;
+    }
+    
+    .dice-display {
+        gap: 12px;
+        font-size: 2rem;
+    }
+    
+    #roll-total {
+        font-size: 1rem;
+    }
+    
+    /* Combat Modal */
+    .modal-content {
+        padding: 20px;
+    }
+    
+    .combat-modal-content {
+        max-width: 450px;
+        padding: 18px;
+    }
+    
+    .combat-header {
+        margin-bottom: 15px;
+        padding-bottom: 12px;
+    }
+    
+    .combat-header h2 {
+        font-size: 1.2rem;
+    }
+    
+    .encounter-info {
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .encounter-name {
+        font-size: 1.2rem;
+        margin-bottom: 5px;
+    }
+    
+    .encounter-description {
+        font-size: 0.8rem;
+    }
+    
+    .requirements-section,
+    .rewards-section {
+        margin-bottom: 12px;
+        padding: 12px;
+    }
+    
+    .requirements-section h3,
+    .rewards-section h3 {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+        gap: 6px;
+    }
+    
+    .requirements-list {
+        gap: 8px;
+    }
+    
+    .requirement-item {
+        padding: 8px 12px;
+        min-width: 65px;
+        border-radius: 8px;
+    }
+    
+    .requirement-icon {
+        font-size: 1.3rem;
+        margin-bottom: 4px;
+    }
+    
+    .requirement-value {
+        font-size: 1.1rem;
+    }
+    
+    .requirement-label {
+        font-size: 0.6rem;
+        margin-top: 2px;
+    }
+    
+    .gear-reward {
+        padding: 8px;
+        margin-bottom: 8px;
+    }
+    
+    .resource-reward-item {
+        padding: 5px 8px;
+        font-size: 0.8rem;
+        gap: 6px;
+    }
+    
+    .modal-actions {
+        gap: 8px;
+        margin-top: 8px;
+    }
+    
+    .modal-actions .action-btn {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+    
+    /* Level Select Modal */
+    .level-select-content {
+        max-width: 380px;
+        padding: 20px;
+    }
+    
+    .level-select-content h2 {
+        font-size: 1.3rem;
+        margin-bottom: 8px;
+    }
+    
+    .level-select-content p {
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .level-buttons {
+        gap: 8px;
+    }
+    
+    .level-btn {
+        padding: 12px 16px;
+        min-width: 75px;
+        border-radius: 8px;
+    }
+    
+    .level-number {
+        font-size: 1.4rem;
+    }
+    
+    .level-label {
+        font-size: 0.75rem;
+        margin: 3px 0;
+    }
+    
+    .level-vp {
+        font-size: 0.7rem;
+    }
+    
+    /* Grit Spending */
+    .grit-spending {
+        margin-top: 10px;
+        padding: 10px;
+    }
+    
+    .grit-spending h4 {
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+    }
+    
+    .grit-controls {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    
+    .grit-stat {
+        gap: 5px;
+        padding: 5px 8px;
+    }
+    
+    .grit-stat .grit-label {
+        min-width: 85px;
+        font-size: 0.8rem;
+    }
+    
+    .grit-btn {
+        width: 22px;
+        height: 22px;
+        font-size: 0.85rem;
+    }
+    
+    /* Trade Modal */
+    .trade-modal-content {
+        min-width: 260px;
+        padding: 20px;
+    }
+    
+    .trade-rate {
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .trade-section {
+        gap: 8px;
+        margin: 8px 0;
+    }
+    
+    .trade-section label {
+        min-width: 60px;
+        font-size: 0.9rem;
+    }
+    
+    .trade-section select {
+        padding: 5px 8px;
+        font-size: 0.85rem;
+    }
+    
+    .trade-available {
+        font-size: 0.75rem;
+        min-width: 80px;
+    }
+    
+    .trade-arrow {
+        font-size: 1.2rem;
+        margin: 8px 0;
+    }
+    
+    /* Panel Header Row */
+    .panel-header-row {
+        margin-bottom: 8px;
+        padding-bottom: 5px;
+    }
+    
+    .trade-btn {
+        padding: 3px 6px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Extra compact for smaller tablets / landscape phones */
+@media screen and (max-width: 900px) {
+    #game-container {
+        grid-template-columns: 180px 1fr 200px;
+    }
+    
+    aside {
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+    
+    .panel {
+        padding: 6px;
+    }
+    
+    .header-panel h1 {
+        font-size: 1rem;
+    }
+    
+    .vp-display {
+        font-size: 0.85rem;
+    }
+    
+    .vp-value {
+        font-size: 1rem;
+    }
+    
+    .panel h2 {
+        font-size: 0.85rem;
+    }
+    
+    /* Resources - more compact */
+    .resource-item {
+        gap: 4px;
+        margin-bottom: 4px;
+        padding: 3px;
+    }
+    
+    .resource-item .icon {
+        font-size: 0.85rem;
+    }
+    
+    .res-name {
+        font-size: 0.75rem;
+    }
+    
+    .res-value {
+        font-size: 0.85rem;
+    }
+    
+    /* Actions */
+    .action-btn {
+        padding: 6px;
+        margin-bottom: 4px;
+        font-size: 0.75rem;
+    }
+    
+    /* Hero */
+    .hero-name {
+        font-size: 0.95rem;
+    }
+    
+    .hero-stats {
+        gap: 4px;
+    }
+    
+    .stat-item {
+        padding: 3px;
+    }
+    
+    .stat-label {
+        font-size: 0.7rem;
+    }
+    
+    .stat-value {
+        font-size: 0.85rem;
+    }
+    
+    .hero-gear h3 {
+        font-size: 0.8rem;
+    }
+    
+    .gear-item {
+        font-size: 0.7rem;
+    }
+    
+    /* Game Log */
+    #game-log {
+        font-size: 0.65rem;
+        height: 120px;
+    }
+    
+    /* Combat Modal */
+    .combat-modal-content {
+        max-width: 400px;
+        padding: 15px;
+    }
+    
+    .combat-header h2 {
+        font-size: 1.1rem;
+    }
+    
+    .encounter-name {
+        font-size: 1.1rem;
+    }
+    
+    .requirement-item {
+        padding: 6px 10px;
+        min-width: 55px;
+    }
+    
+    .requirement-icon {
+        font-size: 1.1rem;
+    }
+    
+    .requirement-value {
+        font-size: 1rem;
+    }
+}

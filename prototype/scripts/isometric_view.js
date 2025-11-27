@@ -4,7 +4,8 @@ export class IsometricView {
         this.ctx = this.canvas.getContext('2d');
         this.grid = grid;
         this.scaleY = 0.8; // Flatten Y for isometric look
-        this.tileHeight = 30; // Height of the 3D tile
+        // Scale tile height proportionally to hex size (base: 30 at hexSize 60)
+        this.tileHeight = Math.round(grid.hexSize * 0.5);
     }
 
     clear() {
@@ -53,12 +54,14 @@ export class IsometricView {
         // Draw contents on top of the tile
         const contentY = isoCenter.y - this.tileHeight;
 
-        // Draw Outpost (Cube)
+        // Draw Outpost (Cube) - scale with hexSize
         if (tileData.outpost && players) {
             const owner = players.find(p => p.id === tileData.ownerId);
             const color = owner ? owner.color : "#00ff00";
             // Draw cube offset to the right so it doesn't hide the number
-            this.drawCube(isoCenter.x + 20, contentY - 5, 14, color);
+            const cubeOffset = Math.round(size * 0.33);
+            const cubeSize = Math.round(size * 0.23);
+            this.drawCube(isoCenter.x + cubeOffset, contentY - Math.round(size * 0.08), cubeSize, color);
         }
 
         if (!tileData.revealed) {
@@ -195,17 +198,22 @@ export class IsometricView {
     drawBadge(x, y, level) {
         const levelColors = { 1: "#4CAF50", 2: "#FFC107", 3: "#F44336" };
         const ctx = this.ctx;
+        const size = this.grid.hexSize;
+        
+        // Scale badge with hexSize
+        const badgeRadius = Math.round(size * 0.17);
+        const badgeFontSize = Math.round(size * 0.2);
         
         ctx.fillStyle = levelColors[level] || "#888";
         ctx.beginPath();
-        ctx.arc(x, y, 10, 0, 2 * Math.PI);
+        ctx.arc(x, y, badgeRadius, 0, 2 * Math.PI);
         ctx.fill();
         ctx.strokeStyle = "#fff";
         ctx.lineWidth = 1;
         ctx.stroke();
         
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 12px Arial";
+        ctx.font = `bold ${badgeFontSize}px Arial`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(level, x, y);
@@ -262,16 +270,22 @@ export class IsometricView {
     drawHero(q, r, edgeIndex, playerColor, playerName) {
         const pos = this.grid.getEdgeMidpoint(q, r, edgeIndex); // Flat coords
         const isoPos = this.toIso(pos.x, pos.y); // Iso coords
+        const size = this.grid.hexSize;
+        
+        // Scale hero with hexSize
+        const heroRadius = Math.round(size * 0.17);
+        const heroFontSize = Math.round(size * 0.17);
+        const heroLabelOffset = Math.round(size * 0.08);
         
         // Draw hero on top of the tile (subtract tileHeight)
-        this.drawHemisphere(isoPos.x, isoPos.y - this.tileHeight, 10, playerColor);
+        this.drawHemisphere(isoPos.x, isoPos.y - this.tileHeight, heroRadius, playerColor);
         
         // Draw player initial
         this.ctx.fillStyle = "#fff";
-        this.ctx.font = "bold 10px Arial";
+        this.ctx.font = `bold ${heroFontSize}px Arial`;
         this.ctx.textAlign = "center";
         this.ctx.textBaseline = "middle";
-        this.ctx.fillText(playerName ? playerName[0] : "H", isoPos.x, isoPos.y - this.tileHeight - 5);
+        this.ctx.fillText(playerName ? playerName[0] : "H", isoPos.x, isoPos.y - this.tileHeight - heroLabelOffset);
     }
 
     render(mapData, selectedHex = null, players = null, hoveredEdge = null) {

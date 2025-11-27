@@ -1,10 +1,10 @@
 export class HexGrid {
-    constructor(canvasId, width, height) {
+    constructor(canvasId, width, height, hexSize = 60) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = width;
         this.canvas.height = height;
-        this.hexSize = 60;
+        this.hexSize = hexSize;
         this.tiles = new Map();
         this.offsetX = width / 2;
         this.offsetY = height / 2;
@@ -82,18 +82,20 @@ export class HexGrid {
                     3: "#F44336"   // Red - Hard
                 };
                 
-                // Draw badge circle
+                // Draw badge circle (scale with hexSize)
+                const badgeRadius = Math.round(this.hexSize * 0.25);
                 ctx.fillStyle = levelColors[tileData.encounterLevel] || "#888";
                 ctx.beginPath();
-                ctx.arc(x, y, 15, 0, 2 * Math.PI);
+                ctx.arc(x, y, badgeRadius, 0, 2 * Math.PI);
                 ctx.fill();
                 ctx.strokeStyle = "#000";
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 
                 // Draw level number
+                const badgeFontSize = Math.round(this.hexSize * 0.27);
                 ctx.fillStyle = "#fff";
-                ctx.font = "bold 16px Arial";
+                ctx.font = `bold ${badgeFontSize}px Arial`;
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(tileData.encounterLevel, x, y);
@@ -127,11 +129,13 @@ export class HexGrid {
             ctx.stroke();
         }
 
-        // Draw outpost if present
+        // Draw outpost if present (scale with hexSize)
         if (tileData.outpost) {
+            const outpostOffset = Math.round(this.hexSize * 0.25);
+            const outpostRadius = Math.round(this.hexSize * 0.1);
             ctx.fillStyle = "#00ff00";
             ctx.beginPath();
-            ctx.arc(x - 15, y - 15, 6, 0, 2 * Math.PI);
+            ctx.arc(x - outpostOffset, y - outpostOffset, outpostRadius, 0, 2 * Math.PI);
             ctx.fill();
             ctx.strokeStyle = "#000";
             ctx.lineWidth = 1;
@@ -143,25 +147,29 @@ export class HexGrid {
     drawTileInfo(x, y, tileData) {
         const ctx = this.ctx;
 
-        // Number token
+        // Number token (scale with hexSize)
+        const tokenRadius = Math.round(this.hexSize * 0.27);
+        const tokenFontSize = Math.round(this.hexSize * 0.27);
         if (tileData.numberToken) {
             ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
             ctx.beginPath();
-            ctx.arc(x, y, 16, 0, 2 * Math.PI);
+            ctx.arc(x, y, tokenRadius, 0, 2 * Math.PI);
             ctx.fill();
 
             ctx.fillStyle = "#000";
-            ctx.font = "bold 16px Arial";
+            ctx.font = `bold ${tokenFontSize}px Arial`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(tileData.numberToken, x, y);
         }
 
-        // Type label
+        // Type label (scale with hexSize)
+        const labelFontSize = Math.round(this.hexSize * 0.13);
+        const labelOffset = Math.round(this.hexSize * 0.37);
         ctx.fillStyle = "#fff";
-        ctx.font = "8px Arial"; // Smaller font
+        ctx.font = `${labelFontSize}px Arial`;
         ctx.textAlign = "center";
-        ctx.fillText(tileData.type.toUpperCase(), x, y + 22); // Adjusted position
+        ctx.fillText(tileData.type.toUpperCase(), x, y + labelOffset);
     }
 
     getTileColor(type) {
@@ -211,12 +219,16 @@ export class HexGrid {
     drawHero(q, r, edgeIndex, playerColor = "#00ffff", playerName = "H") {
         const pos = this.getEdgeMidpoint(q, r, edgeIndex);
         const ctx = this.ctx;
+        
+        // Scale hero size with hexSize
+        const heroRadius = Math.round(this.hexSize * 0.17);
+        const heroFontSize = Math.round(this.hexSize * 0.17);
 
         ctx.fillStyle = playerColor;
         ctx.shadowColor = playerColor;
         ctx.shadowBlur = 10;
         ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 10, 0, 2 * Math.PI);
+        ctx.arc(pos.x, pos.y, heroRadius, 0, 2 * Math.PI);
         ctx.fill();
         ctx.shadowBlur = 0;
         ctx.strokeStyle = "#fff";
@@ -225,7 +237,7 @@ export class HexGrid {
 
         // Draw player initial
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 10px Arial";
+        ctx.font = `bold ${heroFontSize}px Arial`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(playerName[0], pos.x, pos.y);
